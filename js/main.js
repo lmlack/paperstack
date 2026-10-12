@@ -92,6 +92,7 @@ function syncChrome() {
   $('#dock').hidden = !has;
   $('#stats').hidden = !has;
   $('#btnExport').hidden = !has;
+  $('#btnShare').hidden = !has || !canShareFiles;
   $('#btnReset').hidden = !has;
   $('#addFilesBtn').hidden = !has;
 
@@ -131,6 +132,47 @@ async function exportPdf() {
 }
 
 $('#btnExport').onclick = exportPdf;
+
+/* ───────────────────────── share ───────────────────────── */
+
+// The system share sheet: AirDrop, Mail, Messages and so on, whatever the
+// device offers. The file goes straight from this tab to the OS, so the
+// no-upload promise holds. Browsers without file sharing (Firefox desktop)
+// never see the button.
+const canShareFiles = typeof navigator.canShare === 'function'
+  && navigator.canShare({ files: [new File([''], 'probe.pdf', { type: 'application/pdf' })] });
+
+// Browsers only open the share sheet straight after a click. A long document
+// can outlast that window while it is written, so the finished file is kept
+// and the next click shares it instantly. Any edit throws it away.
+let readyToShare = null;
+on('pages', () => { readyToShare = null; });
+
+async function sharePdf() {
+  if (!readyToShare) {
+    const name = `${safeName(state.outName) || 'document'}-edited.pdf`;
+    await withBusy('Writing PDF…', async (ui) => {
+      const bytes = await assemble(state.pages, (done, total) => {
+        ui.label(`Writing page ${done} of ${total}…`);
+        ui.step(done, total);
+      });
+      readyToShare = new File([bytes], name, { type: 'application/pdf' });
+    });
+    if (!readyToShare) return;
+  }
+  try {
+    await navigator.share({ files: [readyToShare] });
+  } catch (err) {
+    if (err.name === 'AbortError') return;   // closed the sheet
+    if (err.name === 'NotAllowedError') {
+      toast('Your PDF is ready. Click Share again to send it.', 'ok');
+      return;
+    }
+    toast(`Could not share: ${err.message}`, 'err');
+  }
+}
+
+$('#btnShare').onclick = sharePdf;
 
 /* ───────────────────────── theme ───────────────────────── */
 

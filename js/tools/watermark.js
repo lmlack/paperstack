@@ -4,6 +4,7 @@
 import { $, $$, el, segment, bindRange, uid, parseRanges } from '../lib/dom.js';
 import { state, on, addAsset, addStamps, removeStampGroup, stampGroups } from '../state.js';
 import { toast } from '../ui/feedback.js';
+import { normalizeAngle } from '../lib/geometry.js';
 
 const TILE_COLS = 3;
 const TILE_ROWS = 4;
@@ -36,7 +37,7 @@ export function initWatermark() {
 
   bindRange($('#wmSize'), $('#wmSizeOut'), (v) => `${v} pt`);
   bindRange($('#wmOp'), $('#wmOpOut'), (v) => `${v}%`);
-  bindRange($('#wmRot'), $('#wmRotOut'), (v) => `${v}°`);
+  bindAngle($('#wmRot'), $('#wmRotNum'));
   bindRange($('#wmW'), $('#wmWOut'), (v) => `${v}%`);
 
   $('#wmFile').addEventListener('change', async (e) => {
@@ -65,6 +66,22 @@ export function initWatermark() {
   renderStampList();
 }
 
+const readAngle = (input) => normalizeAngle(Number(input.value) || 0);
+
+// The slider is for quick dragging across ±90°; the box takes any exact value,
+// decimals and upside-down angles included. The box is what gets applied.
+function bindAngle(slider, box) {
+  slider.addEventListener('input', () => { box.value = slider.value; });
+  box.addEventListener('input', () => {
+    if (box.value === '') return;
+    slider.value = Math.max(-90, Math.min(90, readAngle(box)));
+  });
+  box.addEventListener('change', () => {
+    box.value = readAngle(box);
+    slider.value = Math.max(-90, Math.min(90, Number(box.value)));
+  });
+}
+
 function targetsForScope() {
   if (scope === 'sel') {
     const chosen = state.pages.filter((p) => state.sel.has(p.uid));
@@ -89,7 +106,7 @@ function apply() {
 
   const base = {
     group: uid('wm'),
-    rot: Number($('#wmRot').value),
+    rot: readAngle($('#wmRotNum')),
     opacity: Number($('#wmOp').value) / 100,
   };
 

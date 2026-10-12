@@ -386,6 +386,8 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
   color: var(--ink-3); margin: 18px 0 8px;
 }
 .lbl output { font-family: var(--mono); font-weight: 700; text-transform: none; letter-spacing: 0; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.lbl .deg-field { display: inline-flex; align-items: center; gap: 2px; font-family: var(--mono); color: var(--ink-2); text-transform: none; letter-spacing: 0; }
+.lbl .deg-field input { width: 7ch; padding: 3px 8px; font-family: var(--mono); font-weight: 700; font-size: var(--text-xs); text-align: right; font-variant-numeric: tabular-nums; }
 .panel > .lbl:first-child { margin-top: 0; }
 .hint { font-size: var(--text-ui); color: var(--ink-2); margin: 10px 0 15px; line-height: 1.6; }
 .field-row { display: flex; gap: 9px; align-items: flex-end; margin-bottom: 9px; }

@@ -40,10 +40,16 @@ rotate, `Esc` closes.
 |---|---|
 | **Organize** | Merge several PDFs, drag pages into any order, rotate, duplicate, delete, reverse. Drop images in to add them as pages. |
 | **Compress** | Structural rewrite that keeps text selectable, or redraw every page as a JPEG at a chosen resolution for scans. |
-| **Watermark** | Text or image, at any angle, opacity, color and placement. Single or tiled, on all pages, a selection, or a range. |
+| **Watermark** | Text or image, at any angle (drag the slider or type an exact value), opacity, color and placement. Single or tiled, on all pages, a selection, or a range. |
 | **Sign** | Draw with a mouse or finger, type one in a script face, or upload a photo of your signature (white paper is keyed out automatically). Drag it into place on a full-size page. |
 | **Extract** | Pull out the text layer, or find and save embedded images. |
 | **Split** | Selected pages, custom ranges, every N pages, or one file per page. Several files come back as a zip. |
+
+**Share** sits next to Export and opens your device's share sheet, so the
+edited PDF can go out by AirDrop, Mail, Messages or anything else installed.
+The file goes from the tab to the operating system, not to a server. The
+button only appears in browsers that can share files (Safari, Chrome and Edge
+on macOS, iOS, Android and Windows; not Firefox on desktop).
 
 **Start over** in the top bar closes every open file and returns you to the
 drop zone. It confirms first, and the prompt says how many pages and marks you
