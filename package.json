@@ -1,0 +1,17 @@
+{
+  "name": "paperstack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A PDF editor that runs entirely in the browser. No uploads, no build step.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "node --test test/ && node test/run-browser.mjs && node test/artifact.mjs",
+    "test:unit": "node --test test/",
+    "test:browser": "node test/run-browser.mjs",
+    "test:artifact": "node test/artifact.mjs",
+    "fixture": "node test/make-fixture.mjs",
+    "shots": "node test/shots.mjs"
+  }
+}

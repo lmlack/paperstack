@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paperstack: a private PDF editor</title>
+<meta name="description" content="Merge, split, rotate, compress, watermark and sign PDFs entirely in your browser. Files never leave your device.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%234f7cff'/><path d='M9 7h9l5 5v13H9z' fill='none' stroke='white' stroke-width='2.2' stroke-linejoin='round'/><path d='M18 7v5h5' fill='none' stroke='white' stroke-width='2.2' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="backlink" href="https://gwark.dev/#projects" title="Back to gwark.dev">
+    <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+    <svg class="gwark-mark" viewBox="-70 -70 140 140" aria-hidden="true">
+      <!-- gwark.dev's mark, from its assets/mark.svg. The inner globe and its
+           horizon line are left out at this size: they close up into a blob
+           below about 34px. The full artwork still lives on gwark.dev. -->
+      <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(0)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(30)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(60)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(90)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(120)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(150)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(180)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(210)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(240)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(270)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(300)"/>
+      <rect x="-5.5" y="-66" width="11" height="17" rx="2.5" transform="rotate(330)"/>
+        <circle r="51"/>
+        <g transform="rotate(-24)">
+          <ellipse rx="67" ry="25"/>
+          <circle cx="62" cy="-9" r="7.5"/>
+          <circle cx="-17" cy="20" r="7.5"/>
+        </g>
+      </g>
+    </svg>
+    <span>gwark.dev</span>
+  </a>
+  <span class="topbar-divide" aria-hidden="true"></span>
+
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path d="M9 7h9l5 5v13H9z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M18 7v5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>
+    <div>
+      <h1>Paperstack</h1>
+    </div>
+  </div>
+
+  <div class="topbar-stats" id="stats" hidden>
+    <span id="statPages">0 pages</span>
+    <span class="dot">·</span>
+    <span id="statFiles">0 files</span>
+    <span class="dot">·</span>
+    <span id="statSize">0 KB</span>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="btn ghost icon-btn" id="themeToggle" title="Toggle light / dark" aria-label="Toggle light or dark theme">
+      <svg viewBox="0 0 24 24" class="i-moon"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>
+      <svg viewBox="0 0 24 24" class="i-sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/></svg>
+    </button>
+    <button class="btn warnish" id="btnReset" hidden>
+      <svg viewBox="0 0 24 24" class="ico"><path d="M3 12a9 9 0 1 0 2.6-6.4"/><path d="M3 4v5h5"/></svg>
+      <span>Start over</span>
+    </button>
+    <label class="btn secondary" for="fileInput" id="addFilesBtn" hidden>
+      <svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"/></svg>Add files
+    </label>
+    <button class="btn primary" id="btnExport" hidden>
+      <svg viewBox="0 0 24 24" class="ico"><path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 20h16"/></svg>Export PDF
+    </button>
+  </div>
+</header>
+
+<input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+<input type="file" id="imageInput" accept="image/png,image/jpeg,image/webp" multiple hidden>
+
+<main class="layout" id="layout">
+
+  <!-- ─────────── empty state ─────────── -->
+  <section class="dropzone" id="dropzone">
+    <div class="dz-inner">
+      <svg viewBox="0 0 24 24" class="dz-icon"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <h2>Drop your PDFs here</h2>
+      <p>or <label for="fileInput" class="linkish">browse your computer</label></p>
+      <div class="dz-badges">
+        <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M12 3 4 6v6c0 5 3.4 8.1 8 9 4.6-.9 8-4 8-9V6l-8-3Z"/><path d="m9 12.5 2.2 2.2L15.5 10"/></svg>No uploads, ever</span>
+        <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M5 12h14M12 5v14"/></svg>No page limits</span>
+        <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/></svg>Works offline</span>
+      </div>
+      <div class="dz-stars" aria-hidden="true">✦ ✧ ✦ ✧ ✦ ✧ ✦</div>
+      <p class="dz-home">One of the small tools at <a href="https://gwark.dev/">gwark.dev</a></p>
+    </div>
+  </section>
+
+  <!-- ─────────── page grid ─────────── -->
+  <section class="workspace" id="workspace" hidden>
+    <div class="ws-head">
+      <div class="ws-head-left">
+        <strong>Pages</strong>
+        <span class="muted" id="selCount"></span>
+      </div>
+      <div class="ws-head-right">
+        <button class="btn tiny ghost" id="btnSelectAll">Select all</button>
+        <button class="btn tiny ghost" id="btnSelectNone">Clear selection</button>
+        <label class="zoom">
+          <svg viewBox="0 0 24 24" class="ico"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/></svg>
+          <input type="range" id="zoom" min="110" max="340" step="10" value="180" aria-label="Thumbnail size">
+        </label>
+      </div>
+    </div>
+    <div class="pagegrid" id="pagegrid"></div>
+  </section>
+
+  <!-- ─────────── tool dock ─────────── -->
+  <aside class="dock" id="dock" hidden>
+    <nav class="dock-tabs" role="tablist">
+      <button class="dock-tab active" data-panel="pages" role="tab">Organize</button>
+      <button class="dock-tab" data-panel="compress" role="tab">Compress</button>
+      <button class="dock-tab" data-panel="mark" role="tab">Watermark</button>
+      <button class="dock-tab" data-panel="sign" role="tab">Sign</button>
+      <button class="dock-tab" data-panel="extract" role="tab">Extract</button>
+      <button class="dock-tab" data-panel="split" role="tab">Split</button>
+    </nav>
+
+    <div class="dock-body">
+
+      <!-- Organize -->
+      <div class="panel active" id="panel-pages">
+        <p class="hint">Drag thumbnails to reorder. Click to select, shift-click for a range.
+          With nothing selected, these act on every page.</p>
+        <div class="field-row">
+          <button class="btn block" id="btnRotL"><svg viewBox="0 0 24 24" class="ico"><path d="M9 4 4.5 8.5 9 13"/><path d="M4.5 8.5h8A6.5 6.5 0 0 1 19 15v1"/></svg>Rotate left</button>
+          <button class="btn block" id="btnRotR"><svg viewBox="0 0 24 24" class="ico"><path d="m15 4 4.5 4.5L15 13"/><path d="M19.5 8.5h-8A6.5 6.5 0 0 0 5 15v1"/></svg>Rotate right</button>
+        </div>
+        <div class="field-row">
+          <button class="btn block" id="btnDuplicate">Duplicate</button>
+          <button class="btn block danger" id="btnDelete">Delete</button>
+        </div>
+        <hr>
+        <div class="field-row">
+          <button class="btn block" id="btnMoveFront">Move to front</button>
+          <button class="btn block" id="btnMoveBack">Move to back</button>
+        </div>
+        <button class="btn block" id="btnReverse">Reverse page order</button>
+        <hr>
+        <label class="btn block secondary" for="imageInput">Add images as pages</label>
+        <p class="hint">PNG, JPEG or WebP. Each image becomes its own page.</p>
+        <hr>
+        <div class="filelist" id="filelist"></div>
+      </div>
+
+      <!-- Compress -->
+      <div class="panel" id="panel-compress">
+        <div class="seg" id="cmpMode">
+          <button class="active" data-v="lossless">Optimize</button>
+          <button data-v="raster">Shrink hard</button>
+        </div>
+        <p class="hint" id="cmpModeHint">Rewrites the file structure and drops objects that nothing points at. Text stays sharp and selectable.</p>
+
+        <div id="cmpRasterOpts" hidden>
+          <label class="lbl">Preset</label>
+          <div class="seg" id="cmpPreset">
+            <button data-v="high">High</button>
+            <button class="active" data-v="balanced">Balanced</button>
+            <button data-v="small">Smallest</button>
+          </div>
+          <label class="lbl">Resolution <output id="dpiOut">110 dpi</output></label>
+          <input type="range" id="cmpDpi" min="48" max="220" step="2" value="110">
+          <label class="lbl">JPEG quality <output id="qOut">65%</output></label>
+          <input type="range" id="cmpQ" min="25" max="95" step="1" value="65">
+          <label class="check"><input type="checkbox" id="cmpGray"> Convert to grayscale</label>
+          <p class="warn"><svg viewBox="0 0 24 24" class="ico"><path d="M12 9v4m0 3h.01"/><path d="M10.3 4.3 2.6 18a1.7 1.7 0 0 0 1.5 2.5h15.8A1.7 1.7 0 0 0 21.4 18L13.7 4.3a1.7 1.7 0 0 0-3 0Z"/></svg>Every page is redrawn as an image, so the text is no longer selectable or searchable. Best for scans and photo-heavy decks.</p>
+        </div>
+
+        <button class="btn primary block" id="btnCompress">Compress</button>
+        <div class="result" id="cmpResult" hidden></div>
+      </div>
+
+      <!-- Watermark -->
+      <div class="panel" id="panel-mark">
+        <div class="seg" id="wmKind">
+          <button class="active" data-v="text">Text</button>
+          <button data-v="image">Image</button>
+        </div>
+
+        <div id="wmText">
+          <label class="lbl" for="wmValue">Text</label>
+          <input type="text" id="wmValue" value="CONFIDENTIAL" maxlength="120">
+          <label class="lbl">Typeface</label>
+          <select id="wmFont">
+            <option value="Helvetica">Helvetica</option>
+            <option value="HelveticaBold" selected>Helvetica Bold</option>
+            <option value="TimesRoman">Times</option>
+            <option value="TimesRomanItalic">Times Italic</option>
+            <option value="Courier">Courier</option>
+          </select>
+          <div class="field-row">
+            <div>
+              <label class="lbl">Size <output id="wmSizeOut">48 pt</output></label>
+              <input type="range" id="wmSize" min="8" max="180" step="1" value="48">
+            </div>
+            <div>
+              <label class="lbl">Color</label>
+              <input type="color" id="wmColor" value="#ff3b30">
+            </div>
+          </div>
+        </div>
+
+        <div id="wmImage" hidden>
+          <label class="btn block secondary" for="wmFile">Choose image…</label>
+          <input type="file" id="wmFile" accept="image/png,image/jpeg,image/webp" hidden>
+          <div class="wm-preview" id="wmPreview" hidden><img alt="Watermark image preview"></div>
+          <label class="lbl">Width <output id="wmWOut">40%</output> of page</label>
+          <input type="range" id="wmW" min="5" max="100" step="1" value="40">
+        </div>
+
+        <label class="lbl">Opacity <output id="wmOpOut">25%</output></label>
+        <input type="range" id="wmOp" min="5" max="100" step="1" value="25">
+        <label class="lbl">Angle <output id="wmRotOut">45°</output></label>
+        <input type="range" id="wmRot" min="-90" max="90" step="1" value="45">
+
+        <label class="lbl">Placement</label>
+        <div class="posgrid" id="wmPos">
+          <button data-v="tl" aria-label="Top left"></button><button data-v="tc" aria-label="Top center"></button><button data-v="tr" aria-label="Top right"></button>
+          <button data-v="ml" aria-label="Middle left"></button><button class="active" data-v="c" aria-label="Center"></button><button data-v="mr" aria-label="Middle right"></button>
+          <button data-v="bl" aria-label="Bottom left"></button><button data-v="bc" aria-label="Bottom center"></button><button data-v="br" aria-label="Bottom right"></button>
+        </div>
+        <label class="check"><input type="checkbox" id="wmTile"> Tile across the whole page</label>
+
+        <label class="lbl">Apply to</label>
+        <div class="seg" id="wmScope">
+          <button class="active" data-v="all">All pages</button>
+          <button data-v="sel">Selected</button>
+          <button data-v="range">Range</button>
+        </div>
+        <input type="text" id="wmRange" placeholder="e.g. 1-3, 7, 10-12" hidden>
+
+        <button class="btn primary block" id="btnWmApply">Add watermark</button>
+        <div class="stamplist" id="stampList"></div>
+      </div>
+
+      <!-- Sign -->
+      <div class="panel" id="panel-sign">
+        <div class="seg" id="sgMode">
+          <button class="active" data-v="draw">Draw</button>
+          <button data-v="type">Type</button>
+          <button data-v="upload">Upload</button>
+        </div>
+
+        <div id="sgDraw">
+          <div class="padwrap">
+            <canvas id="sigPad" width="760" height="300"></canvas>
+            <span class="padline"></span>
+            <span class="padhint">Sign here with your mouse or finger</span>
+          </div>
+          <div class="field-row">
+            <button class="btn block ghost" id="btnSigUndo">Undo stroke</button>
+            <button class="btn block ghost" id="btnSigClear">Clear</button>
+          </div>
+          <div class="field-row">
+            <div>
+              <label class="lbl">Pen <output id="sigPenOut">3 px</output></label>
+              <input type="range" id="sigPen" min="1" max="10" step="1" value="3">
+            </div>
+            <div>
+              <label class="lbl">Ink</label>
+              <input type="color" id="sigInk" value="#10213f">
+            </div>
+          </div>
+        </div>
+
+        <div id="sgType" hidden>
+          <label class="lbl" for="sigTypeText">Your name</label>
+          <input type="text" id="sigTypeText" placeholder="Alex Moreau" maxlength="60">
+          <label class="lbl">Style</label>
+          <select id="sigTypeFont">
+            <option value="'Snell Roundhand','Brush Script MT','Segoe Script',cursive">Flowing script</option>
+            <option value="'Zapfino','Apple Chancery','Lucida Calligraphy',cursive">Formal calligraphy</option>
+            <option value="'Georgia','Times New Roman',serif">Plain serif</option>
+            <option value="'Helvetica Neue',Arial,sans-serif">Plain sans</option>
+          </select>
+          <div class="typepreview" id="sigTypePreview"></div>
+        </div>
+
+        <div id="sgUpload" hidden>
+          <label class="btn block secondary" for="sigFile">Choose image of your signature…</label>
+          <input type="file" id="sigFile" accept="image/png,image/jpeg,image/webp" hidden>
+          <p class="hint">A PNG with a transparent background looks best, but white paper gets keyed out automatically.</p>
+        </div>
+
+        <hr>
+        <label class="lbl">Place on page</label>
+        <div class="field-row">
+          <select id="sigPage"></select>
+          <button class="btn" id="btnSigPlace">Position…</button>
+        </div>
+        <p class="hint">Drag the signature where it belongs, then confirm.</p>
+      </div>
+
+      <!-- Extract -->
+      <div class="panel" id="panel-extract">
+        <div class="seg" id="exKind">
+          <button class="active" data-v="text">Text</button>
+          <button data-v="images">Images</button>
+        </div>
+
+        <div id="exText">
+          <div class="seg" id="exScope">
+            <button class="active" data-v="all">All pages</button>
+            <button data-v="sel">Selected</button>
+          </div>
+          <label class="check"><input type="checkbox" id="exMarkers" checked> Insert page markers</label>
+          <button class="btn primary block" id="btnExtractText">Extract text</button>
+          <textarea id="exOut" readonly placeholder="Extracted text appears here…"></textarea>
+          <div class="field-row">
+            <button class="btn block" id="btnCopyText" disabled>Copy</button>
+            <button class="btn block" id="btnSaveText" disabled>Save .txt</button>
+          </div>
+        </div>
+
+        <div id="exImages" hidden>
+          <button class="btn primary block" id="btnExtractImages">Find embedded images</button>
+          <div class="imggrid" id="exImgGrid"></div>
+          <button class="btn block" id="btnSaveImages" hidden>Download all as .zip</button>
+        </div>
+      </div>
+
+      <!-- Split -->
+      <div class="panel" id="panel-split">
+        <label class="lbl">Mode</label>
+        <select id="spMode">
+          <option value="sel">Selected pages → one PDF</option>
+          <option value="ranges">Custom ranges → one PDF each</option>
+          <option value="every">Every N pages → separate PDFs</option>
+          <option value="burst">Burst: one PDF per page</option>
+        </select>
+
+        <div id="spRangesWrap" hidden>
+          <label class="lbl" for="spRanges">Ranges</label>
+          <input type="text" id="spRanges" placeholder="1-3, 4-8, 9">
+          <p class="hint">Comma-separated. Each range becomes its own file.</p>
+        </div>
+
+        <div id="spEveryWrap" hidden>
+          <label class="lbl">Pages per file <output id="spEveryOut">5</output></label>
+          <input type="range" id="spEvery" min="1" max="50" step="1" value="5">
+        </div>
+
+        <button class="btn primary block" id="btnSplit">Split</button>
+        <p class="hint">Several files come back as a .zip, built right here in the browser.</p>
+      </div>
+
+    </div>
+  </aside>
+</main>
+
+<!-- full-size page viewer -->
+<div class="viewer" id="viewer" hidden>
+  <header class="viewer-bar">
+    <div class="viewer-nav">
+      <button class="btn ghost icon-btn" id="viewPrev" aria-label="Previous page">
+        <svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg>
+      </button>
+      <span class="viewer-count" id="viewCount">Page 1 of 1</span>
+      <button class="btn ghost icon-btn" id="viewNext" aria-label="Next page">
+        <svg viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></svg>
+      </button>
+    </div>
+    <span class="viewer-title" id="viewTitle"></span>
+
+    <div class="viewer-tools">
+      <button class="btn ghost icon-btn" id="viewZoomOut" aria-label="Zoom out">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M8.2 11h5.6M20 20l-4.4-4.4"/></svg>
+      </button>
+      <span class="viewer-zoom" id="viewZoom">100%</span>
+      <button class="btn ghost icon-btn" id="viewZoomIn" aria-label="Zoom in">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M8.2 11h5.6M11 8.2v5.6M20 20l-4.4-4.4"/></svg>
+      </button>
+      <button class="btn tiny ghost" id="viewFit">Fit width</button>
+
+      <span class="viewer-sep"></span>
+      <button class="btn ghost icon-btn" id="viewRotL" aria-label="Rotate left">
+        <svg viewBox="0 0 24 24"><path d="M9 4 4.5 8.5 9 13"/><path d="M4.5 8.5h8A6.5 6.5 0 0 1 19 15v1"/></svg>
+      </button>
+      <button class="btn ghost icon-btn" id="viewRotR" aria-label="Rotate right">
+        <svg viewBox="0 0 24 24"><path d="m15 4 4.5 4.5L15 13"/><path d="M19.5 8.5h-8A6.5 6.5 0 0 0 5 15v1"/></svg>
+      </button>
+      <button class="btn ghost icon-btn danger" id="viewDelete" aria-label="Delete this page">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+      </button>
+
+      <span class="viewer-sep"></span>
+      <button class="btn ghost icon-btn" id="viewClose" aria-label="Close the viewer">
+        <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="viewer-stage" id="viewerStage">
+    <div class="viewer-sheet" id="viewerSheet">
+      <canvas id="viewerCanvas"></canvas>
+      <div class="stamps" id="viewerStamps"></div>
+    </div>
+  </div>
+
+  <footer class="viewer-foot">
+    <span><kbd>←</kbd><kbd>→</kbd> page</span>
+    <span><kbd>+</kbd><kbd>−</kbd> zoom</span>
+    <span><kbd>0</kbd> fit</span>
+    <span><kbd>[</kbd><kbd>]</kbd> rotate</span>
+    <span><kbd>Esc</kbd> close</span>
+  </footer>
+</div>
+
+<!-- placement modal -->
+<div class="modal" id="placeModal" hidden>
+  <div class="modal-card">
+    <header>
+      <strong>Position your signature</strong>
+      <button class="btn ghost icon-btn" id="placeClose" aria-label="Close">✕</button>
+    </header>
+    <div class="place-stage" id="placeStage">
+      <canvas id="placeCanvas"></canvas>
+      <div class="place-item" id="placeItem"><img alt="Signature"><span class="grip" data-dir="se"></span></div>
+    </div>
+    <footer>
+      <span class="muted">Drag to move, or grab the corner to resize</span>
+      <div class="field-row">
+        <button class="btn" id="placeCancel">Cancel</button>
+        <button class="btn primary" id="placeConfirm">Place signature</button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<div class="overlay" id="busy" hidden>
+  <div class="busy-card">
+    <div class="spinner"></div>
+    <p id="busyLabel">Working…</p>
+    <div class="bar"><div id="busyBar"></div></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
