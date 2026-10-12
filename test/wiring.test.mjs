@@ -73,10 +73,17 @@ test('outbound links go only where we intend', () => {
 test('nothing is loaded from the network at runtime', () => {
   const offenders = [];
   const remote = /https?:\/\/(?!localhost|127\.0\.0\.1)[^\s"')]+/g;
+  // The canonical link and the og:/twitter: values are declarations, not
+  // loads: the browser never fetches them, and every one points at this app's
+  // own deployed address. A social scraper fetches og:image from its own
+  // servers, which is not the runtime this test is about.
+  const METADATA_URL = /<(?:link\b[^>]*?rel="canonical"[^>]*?href|meta\b[^>]*?(?:property="og:[a-z:]+"|name="twitter:[a-z]+")[^>]*?content)="(https?:\/\/[^"]+)"/gi;
   // Anchor targets are covered by the test above; blank them so a link cannot
   // be mistaken for a fetch, and a fetch cannot hide behind a link.
   const scannable = (path, text) => (path === 'index.html'
-    ? text.replace(ANCHOR_HREF, (tag) => tag.replace(/https?:\/\/[^"]+/, 'about:blank'))
+    ? text
+      .replace(ANCHOR_HREF, (tag) => tag.replace(/https?:\/\/[^"]+/, 'about:blank'))
+      .replace(METADATA_URL, (tag) => tag.replace(/https?:\/\/[^"]+/, 'about:blank'))
     : text);
 
   for (const { path, text } of [...sources, { path: 'index.html', text: html },
