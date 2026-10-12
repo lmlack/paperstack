@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 import { makeZip } from '../js/lib/zip.js';
 import { parseRanges, parseRangeGroups, hexToRgb01, safeName, fmtBytes } from '../js/lib/dom.js';
-import { visualSize, toPageSpace, toDisplaySpace, anchorStamp, centerFromAnchor, norm } from '../js/lib/geometry.js';
+import { visualSize, toPageSpace, toDisplaySpace, anchorStamp, centerFromAnchor, norm, normalizeAngle } from '../js/lib/geometry.js';
 
 /* ───────── page ranges ───────── */
 
@@ -53,6 +53,16 @@ test('fmtBytes is readable at each scale', () => {
 });
 
 /* ───────── stamp geometry ───────── */
+
+test('normalizeAngle folds any typed angle into (-180, 180]', () => {
+  assert.equal(normalizeAngle(45), 45);
+  assert.equal(normalizeAngle(-30), -30);
+  assert.equal(normalizeAngle(180), 180);
+  assert.equal(normalizeAngle(-180), 180);
+  assert.equal(normalizeAngle(270), -90);
+  assert.equal(normalizeAngle(-200), 160);
+  assert.equal(normalizeAngle(397.5), 37.5);
+});
 
 test('visualSize swaps the axes on quarter turns only', () => {
   assert.deepEqual(visualSize(612, 792, 0), { vw: 612, vh: 792 });

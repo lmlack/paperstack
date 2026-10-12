@@ -80,6 +80,9 @@
     <label class="btn secondary" for="fileInput" id="addFilesBtn" hidden>
       <svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"/></svg>Add files
     </label>
+    <button class="btn secondary" id="btnShare" hidden title="Send with AirDrop, Mail, Messages and the rest of your device's share sheet">
+      <svg viewBox="0 0 24 24" class="ico"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M8 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/></svg><span>Share</span>
+    </button>
     <button class="btn primary" id="btnExport" hidden>
       <svg viewBox="0 0 24 24" class="ico"><path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 20h16"/></svg>Export PDF
     </button>
@@ -231,8 +234,8 @@
 
         <label class="lbl">Opacity <output id="wmOpOut">25%</output></label>
         <input type="range" id="wmOp" min="5" max="100" step="1" value="25">
-        <label class="lbl">Angle <output id="wmRotOut">45°</output></label>
-        <input type="range" id="wmRot" min="-90" max="90" step="1" value="45">
+        <label class="lbl" for="wmRotNum">Angle <span class="deg-field"><input type="number" id="wmRotNum" min="-180" max="180" step="any" value="45" aria-label="Angle in degrees">°</span></label>
+        <input type="range" id="wmRot" min="-90" max="90" step="1" value="45" aria-label="Angle">
 
         <label class="lbl">Placement</label>
         <div class="posgrid" id="wmPos">

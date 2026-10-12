@@ -8,6 +8,12 @@
 
 export const norm = (deg) => ((Math.round(deg) % 360) + 360) % 360;
 
+/** A typed stamp angle folded into (-180, 180]: -200 becomes 160. Decimals survive. */
+export function normalizeAngle(deg) {
+  const r = ((deg % 360) + 360) % 360;
+  return r > 180 ? r - 360 : r;
+}
+
 /** Size of the page as displayed, given its unrotated box. */
 export const visualSize = (w, h, rot) => (norm(rot) % 180 === 0 ? { vw: w, vh: h } : { vw: h, vh: w });
 
