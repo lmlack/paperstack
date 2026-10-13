@@ -21,6 +21,7 @@ let currentUid = null;
 let mode = 'fit';      // 'fit' | 'width' | a number
 let renderToken = 0;
 
+const HISTORY_KEY = 'paperstackViewer';
 const isOpen = () => !viewer.hidden;
 const indexOf = () => state.pages.findIndex((p) => p.uid === currentUid);
 
@@ -44,6 +45,12 @@ export function initViewer() {
   });
 
   document.addEventListener('keydown', onKey);
+
+  // The viewer takes a history entry, so a phone's back gesture or the
+  // browser's back button closes it rather than leaving the app.
+  window.addEventListener('popstate', () => {
+    if (isOpen() && !history.state?.[HISTORY_KEY]) closeViewer();
+  });
 
   let resizeTimer = 0;
   window.addEventListener('resize', () => {
@@ -70,12 +77,17 @@ export function openViewer(uid) {
   if (!page) return;
   currentUid = uid;
   mode = 'fit';
+  if (!isOpen() && !history.state?.[HISTORY_KEY]) history.pushState({ [HISTORY_KEY]: true }, '');
   viewer.hidden = false;
   draw();
 }
 
 export function closeViewer() {
+  if (!isOpen()) return;
   viewer.hidden = true;
+  // Closed by the button, Esc or a deletion: take back the entry we added.
+  // Closed by going back: it is already gone.
+  if (history.state?.[HISTORY_KEY]) history.back();
   currentUid = null;
   renderToken++;                       // abandon any render still in flight
   canvas.width = canvas.height = 0;

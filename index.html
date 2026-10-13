@@ -456,11 +456,12 @@
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
       </button>
 
-      <span class="viewer-sep"></span>
-      <button class="btn ghost icon-btn" id="viewClose" aria-label="Close the viewer">
-        <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
-      </button>
+      <span class="viewer-sep viewer-sep-close"></span>
     </div>
+    <!-- Outside the tools so it can keep the top row on a phone. -->
+    <button class="btn ghost icon-btn" id="viewClose" aria-label="Close the viewer">
+      <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+    </button>
   </header>
 
   <div class="viewer-stage" id="viewerStage">

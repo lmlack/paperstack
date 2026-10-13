@@ -534,6 +534,18 @@ textarea {
 .viewer-tools { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .viewer-zoom { font-family: var(--mono); font-size: var(--text-sm); font-weight: 700; color: var(--ink-2); min-width: 6ch; text-align: center; }
 .viewer-sep { width: 1.5px; height: 22px; background: var(--line); margin: 0 7px; border-radius: 2px; }
+/* A phone cannot fit the bar on one line, and the close button used to be
+   pushed off the right edge with no Esc key to fall back on. Two rows
+   instead: page navigation and close on top, the tools centered below. */
+@media (max-width: 720px) {
+  .viewer-bar { flex-wrap: wrap; row-gap: 6px; padding: 8px 10px; }
+  #viewClose { order: 2; margin-left: auto; }
+  .viewer-tools { order: 3; flex-basis: 100%; margin-left: 0; justify-content: center; flex-wrap: wrap; gap: 0; }
+  .viewer-tools .viewer-sep { margin: 0 3px; }
+  .viewer-tools .viewer-zoom { min-width: 4.5ch; }
+  .viewer-tools #viewFit { padding-inline: 8px; }
+  .viewer-sep-close { display: none; }
+}
 .viewer-stage {
   flex: 1; overflow: auto; display: grid; place-content: safe center;
   padding: 28px; background: var(--bg-3);
