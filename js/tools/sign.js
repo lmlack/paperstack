@@ -4,11 +4,8 @@
 
 import { $, el, bindRange, segment } from '../lib/dom.js';
 import { state, on, addAsset, addCanvasAsset, addStamps } from '../state.js';
-import { renderPage } from '../pdfjs.js';
-import { displayInfo } from '../assemble.js';
-import { withBusy, toast } from '../ui/feedback.js';
-
-const STAGE_MAX = { w: 780, h: 460 };
+import { toast } from '../ui/feedback.js';
+import { place } from '../ui/place.js';
 
 let mode = 'draw';
 let uploaded = null;        // asset from the Upload tab
@@ -56,7 +53,6 @@ export function initSign() {
   $('#btnSigPlace').onclick = openPlacement;
   on('pages', refreshPageMenu);
   refreshPageMenu();
-  initPlacementStage();
 }
 
 function refreshPageMenu() {
@@ -224,23 +220,7 @@ async function keyOutWhite(file, threshold = 232) {
   return new File([blob], 'signature.png', { type: 'image/png' });
 }
 
-/* ───────────────────────── placement stage ───────────────────────── */
-
-const modal = $('#placeModal');
-const stage = $('#placeStage');
-const item = $('#placeItem');
-let placing = null;   // { page, asset, stageW, stageH }
-
-function initPlacementStage() {
-  $('#placeClose').onclick = closePlacement;
-  $('#placeCancel').onclick = closePlacement;
-  $('#placeConfirm').onclick = confirmPlacement;
-  modal.addEventListener('pointerdown', (e) => { if (e.target === modal) closePlacement(); });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modal.hidden) closePlacement();
-  });
-  makeDraggable();
-}
+/* ───────────────────────── placement ───────────────────────── */
 
 async function openPlacement() {
   const page = state.pages.find((p) => p.uid === $('#sigPage').value);
@@ -254,97 +234,39 @@ async function openPlacement() {
     return;
   }
 
-  await withBusy('Rendering page…', async () => {
-    const { w: wPt, h: hPt, rotation } = await displayInfo(page);
-    const scale = Math.min(STAGE_MAX.w / wPt, STAGE_MAX.h / hPt, 2);
-    const canvas = await renderPage(state.sources.get(page.srcId), page.index, scale, { rotation });
-
-    const target = $('#placeCanvas');
-    target.width = canvas.width;
-    target.height = canvas.height;
-    target.getContext('2d').drawImage(canvas, 0, 0);
-    stage.style.width = `${canvas.width}px`;
-    stage.style.height = `${canvas.height}px`;
-
-    // Default: a third of the page width, sitting on the lower right.
-    const width = canvas.width * 0.33;
-    const height = width * (asset.h / asset.w);
-    Object.assign(item.style, {
-      width: `${width}px`,
-      height: `${height}px`,
-      left: `${canvas.width * 0.58}px`,
-      top: `${canvas.height * 0.76}px`,
-    });
-    $('img', item).src = asset.url;
-
-    placing = { page, asset, stageW: canvas.width, stageH: canvas.height, ratio: asset.h / asset.w };
-    modal.hidden = false;
+  const ratio = asset.h / asset.w;
+  const spot = await place(page, {
+    title: 'Position your signature',
+    confirm: 'Place signature',
+    build(item, stage) {
+      // Default: a third of the page width, sitting on the lower right.
+      const width = stage.w * 0.33;
+      Object.assign(item.style, {
+        width: `${width}px`,
+        height: `${width * ratio}px`,
+        left: `${stage.w * 0.58}px`,
+        top: `${stage.h * 0.76}px`,
+      });
+      item.prepend(el('img', { src: asset.url, alt: 'Signature' }));
+      return {
+        resize(w) {
+          item.style.width = `${w}px`;
+          item.style.height = `${w * ratio}px`;
+        },
+      };
+    },
   });
-}
-
-function closePlacement() {
-  modal.hidden = true;
-  placing = null;
-}
-
-function makeDraggable() {
-  let drag = null;
-
-  item.addEventListener('pointerdown', (e) => {
-    if (!placing) return;
-    e.preventDefault();
-    const box = item.getBoundingClientRect();
-    drag = {
-      resize: e.target.classList.contains('grip'),
-      startX: e.clientX,
-      startY: e.clientY,
-      left: item.offsetLeft,
-      top: item.offsetTop,
-      width: box.width,
-    };
-    try { item.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
-  });
-
-  item.addEventListener('pointermove', (e) => {
-    if (!drag || !placing) return;
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-
-    if (drag.resize) {
-      const width = Math.max(24, Math.min(placing.stageW, drag.width + dx));
-      item.style.width = `${width}px`;
-      item.style.height = `${width * placing.ratio}px`;
-      return;
-    }
-    const maxLeft = placing.stageW - item.offsetWidth;
-    const maxTop = placing.stageH - item.offsetHeight;
-    item.style.left = `${Math.max(0, Math.min(maxLeft, drag.left + dx))}px`;
-    item.style.top = `${Math.max(0, Math.min(maxTop, drag.top + dy))}px`;
-  });
-
-  const stop = () => { drag = null; };
-  item.addEventListener('pointerup', stop);
-  item.addEventListener('pointercancel', stop);
-}
-
-function confirmPlacement() {
-  if (!placing) return;
-  const { page, asset, stageW, stageH } = placing;
-  const width = item.offsetWidth;
-  const height = item.offsetHeight;
+  if (!spot) return;
 
   addStamps([page], [{
     group: `sig-${asset.id}-${Date.now()}`,
     type: 'image',
     assetId: asset.id,
-    u: (item.offsetLeft + width / 2) / stageW,
-    v: 1 - (item.offsetTop + height / 2) / stageH,   // stage is y-down, PDFs are y-up
-    w: width / stageW,
+    u: spot.u,
+    v: spot.v,
+    w: spot.w,
     rot: 0,
     opacity: 1,
   }]);
-
-  const index = state.pages.indexOf(page) + 1;
-  closePlacement();
-  toast(`Signature placed on page ${index}.`, 'ok');
+  toast(`Signature placed on page ${state.pages.indexOf(page) + 1}.`, 'ok');
 }

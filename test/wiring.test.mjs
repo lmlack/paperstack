@@ -52,7 +52,7 @@ test('every class the JS selects appears in the markup or the stylesheet', () =>
 
 test('each tool tab has a matching panel', () => {
   const tabs = [...html.matchAll(/data-panel="([^"]+)"/g)].map((m) => m[1]);
-  assert.ok(tabs.length === 6, `expected 6 tabs, found ${tabs.length}`);
+  assert.ok(tabs.length === 7, `expected 7 tabs, found ${tabs.length}`);
   for (const tab of tabs) assert.ok(ids.has(`panel-${tab}`), `no #panel-${tab} for tab "${tab}"`);
 });
 /**

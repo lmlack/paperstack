@@ -92,7 +92,7 @@ export async function probe() {
     assert(!visible($('#workspace')), 'workspace should be hidden');
     assert(!visible($('#dock')), 'tool dock should be hidden');
     assert(!visible($('#btnExport')), 'export button should be hidden');
-    assert($$('.dock-tab').length === 6, `expected 6 tool tabs, found ${$$('.dock-tab').length}`);
+    assert($$('.dock-tab').length === 7, `expected 7 tool tabs, found ${$$('.dock-tab').length}`);
     return '6 tools, nothing loaded';
   });
 
@@ -382,6 +382,59 @@ export async function probe() {
     assert($('#placeModal').hidden, 'the dialog stayed open');
     assert($$('#pagegrid .stamps .st img').length === 1, 'no signature preview on the thumbnail');
     return `placed at u=${stamp.u.toFixed(2)}, v=${stamp.v.toFixed(2)}, ${(stamp.w * 100).toFixed(0)}% wide`;
+  });
+
+  await check('a note can be written and dragged onto a page', async () => {
+    $('.dock-tab[data-panel="notes"]').click();
+    assert($('#panel-notes').classList.contains('active'), 'notes panel did not open');
+    $('#ntPage').value = state.pages[1].uid;
+    $('#ntText').value = 'Check this figure before the review on Friday afternoon please';
+    $('#btnNtPlace').click();
+    await until(() => !$('#placeModal').hidden, 'the placement dialog');
+    assert($('#placeTitle').textContent === 'Position your note', `dialog says "${$('#placeTitle').textContent}"`);
+    const card = $('#placeItem .note-card');
+    assert(card && card.textContent.includes('\n'), 'the long note did not wrap');
+    assert(!$('#placeItem .grip').hidden, 'no resize grip on a note');
+
+    // Pull the corner in: the note must rewrap onto more lines.
+    const before = card.textContent.split('\n').length;
+    const grip = $('#placeItem .grip').getBoundingClientRect();
+    const fire = (type, x) => $('#placeItem .grip').dispatchEvent(new PointerEvent(type, {
+      pointerId: 2, bubbles: true, cancelable: true, clientX: x, clientY: grip.top + 2 }));
+    fire('pointerdown', grip.left + 2);
+    fire('pointermove', grip.left - 60);
+    fire('pointerup', grip.left - 60);
+    const after = card.textContent.split('\n').length;
+    assert(after > before, `narrowing kept ${after} lines (was ${before})`);
+
+    $('#placeConfirm').click();
+    await until(() => state.pages[1].stamps.length === 1, 'the note stamp');
+    const stamp = state.pages[1].stamps[0];
+    assert(stamp.type === 'note' && stamp.lines.length === after, `stored ${stamp.lines?.length} lines`);
+    assert($$('#pagegrid .stamps .st.note').length === 1, 'no note preview on the thumbnail');
+    assert($$('#noteList .row').length === 1, 'the note is not listed');
+    assert(!$('#stampList').textContent.includes('Check this figure'), 'the note leaked into the watermark list');
+    return `${after} lines after narrowing (was ${before})`;
+  });
+
+  await check('a sticky note is placed as an icon and can be removed', async () => {
+    $('#ntKind').querySelector('[data-v="comment"]').click();
+    assert(!$('#ntCommentStyle').hidden && $('#ntStyle').hidden, 'style controls did not swap');
+    $('#ntText').value = 'Is this number right?';
+    $('#btnNtPlace').click();
+    await until(() => !$('#placeModal').hidden, 'the placement dialog');
+    assert($('#placeItem .comment-pin'), 'no note icon to drag');
+    assert($('#placeItem .grip').hidden, 'a sticky note should not resize');
+    assert(!$('#placeItem .note-card'), 'the previous note card was left behind');
+    $('#placeConfirm').click();
+    await until(() => state.pages[1].stamps.length === 2, 'the comment stamp');
+    assert($$('#pagegrid .stamps .st.comment').length === 1, 'no icon on the thumbnail');
+    assert($$('#noteList .row').length === 2, 'the list did not grow');
+
+    for (const btn of $$('#noteList .row button')) btn.click();
+    await until(() => state.pages[1].stamps.length === 0, 'both notes to go');
+    $('#ntKind').querySelector('[data-v="note"]').click();
+    return 'placed, listed and removed';
   });
 
   await check('extracting text fills the panel', async () => {

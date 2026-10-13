@@ -70,6 +70,13 @@ try {
     S.duplicatePages([S.state.pages[1]]);
     S.addStamps(S.state.pages, [{ group: 'wm', type: 'text', text: 'CONFIDENTIAL',
       font: 'HelveticaBold', size: 46, color: '#d22', opacity: 0.25, rot: 45, u: 0.5, v: 0.5 }]);
+    // Both kinds of note, on a page that is turned 90°.
+    S.addStamps([S.state.pages[0]], [
+      { group: 'n', type: 'note', text: 'NOTEMARKER check', lines: ['NOTEMARKER', 'check'],
+        font: 'Helvetica', size: 12, color: '#111111', bg: '#fff3a8', u: 0.3, v: 0.8, w: 0.3, rot: 0, opacity: 1 },
+      { group: 'c', type: 'comment', text: 'Größe prüfen ✓', color: '#ffd60a',
+        created: Date.now(), u: 0.9, v: 0.9, rot: 0, opacity: 1 },
+    ]);
     const out = await assemble(S.state.pages);
     let binary = '';
     for (const b of out) binary += String.fromCharCode(b);
@@ -113,6 +120,24 @@ try {
   // Preview uses. A file only our own stack can render would be no good.
   const thumb = await capture('qlmanage', ['-t', '-s', '400', '-o', OUT, file]);
   expect(/produced one thumbnail/.test(thumb), 'Quick Look renders the first page');
+
+  // Independent parse #3: PDFKit, which is Preview itself. The sticky note has
+  // to come back as a real, non-printing text comment with its text intact,
+  // and the on-page note as ordinary page text.
+  const probe = join(OUT, 'notes-probe.swift');
+  writeFileSync(probe, [
+    'import PDFKit',
+    'let doc = PDFDocument(url: URL(fileURLWithPath: CommandLine.arguments[1]))!',
+    'let page = doc.page(at: 0)!',
+    'for a in page.annotations { print("ANNOT", a.type ?? "?", a.shouldPrint, a.contents ?? "") }',
+    'print("TEXT", (page.string ?? "").replacingOccurrences(of: "\\n", with: " "))',
+  ].join('\n'));
+  const kit = await capture('swift', [probe, file]);
+  const annot = kit.split('\n').find((l) => l.startsWith('ANNOT Text'));
+  expect(Boolean(annot), `Preview's PDFKit sees the sticky note${annot ? '' : `: ${kit.slice(0, 200)}`}`);
+  expect(annot?.endsWith('Größe prüfen ✓'), 'its text survives, accents and symbols included');
+  expect(annot?.includes(' false '), 'it is set not to print');
+  expect(/TEXT .*NOTEMARKER/.test(kit), 'the on-page note is real text Preview can read');
 } catch (err) {
   console.error('artifact check failed:', err.message);
   bad++;

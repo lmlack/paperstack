@@ -42,6 +42,7 @@ rotate, `Esc` closes.
 | **Compress** | Structural rewrite that keeps text selectable, or redraw every page as a JPEG at a chosen resolution for scans. |
 | **Watermark** | Text or image, at any angle (drag the slider or type an exact value), opacity, color and placement. Single or tiled, on all pages, a selection, or a range. |
 | **Sign** | Draw with a mouse or finger, type one in a script face, or upload a photo of your signature (white paper is keyed out automatically). Drag it into place on a full-size page. |
+| **Notes** | Write a note onto any page, on a yellow or white card or bare, and drag it into place; it prints and shows in every app. Or leave a sticky note: a real PDF comment that opens when clicked in Preview or Acrobat, stays editable there, and does not print. |
 | **Extract** | Pull out the text layer, or find and save embedded images. |
 | **Split** | Selected pages, custom ranges, every N pages, or one file per page. Several files come back as a zip. |
 

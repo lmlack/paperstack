@@ -255,6 +255,65 @@ export async function runSuite(logger) {
     return `${spot} red pixels at the placement`;
   });
 
+  /* ───────── notes ───────── */
+
+  await check('a note on the page is written as real, selectable text', async () => {
+    for (const p of state.pages) p.stamps = [];
+    addStamps([state.pages[0]], [{
+      group: 'n1', type: 'note', text: 'Ask Sam', lines: ['Ask Sam', 'about Q3'],
+      font: 'Helvetica', size: 14, color: '#ff0000', bg: '#fff3a8',
+      u: 0.3, v: 0.7, w: 0.3, rot: 0, opacity: 1,
+    }]);
+    const out = await reopen(await assemble(state.pages));
+    const { text } = await out.read(0);
+    assert(text.includes('Ask Sam') && text.includes('about Q3'), `page text is "${text.slice(0, 80)}"`);
+    const canvas = await renderPage({ pdfjs: out.doc }, 0, 1);
+    const near = sample(canvas, [0.15, 0.2, 0.45, 0.4], isRed);
+    const far = sample(canvas, [0.6, 0.6, 1, 1], isRed);
+    assert(near > 20, `expected red ink around the note, found ${near}`);
+    assert(far === 0, `found ${far} red pixels far from the note`);
+    await out.close();
+    return `${near} ink pixels where the note was placed`;
+  });
+
+  await check('a note lands where it was placed on a rotated page too', async () => {
+    rotatePages([state.pages[0]], 90);
+    const out = await reopen(await assemble(state.pages));
+    const canvas = await renderPage({ pdfjs: out.doc }, 0, 1, { rotation: (await out.read(0)).rotate });
+    const near = sample(canvas, [0.15, 0.2, 0.45, 0.4], isRed);
+    rotatePages([state.pages[0]], -90);
+    await out.close();
+    assert(near > 20, `expected the note top-left of the turned page, found ${near}`);
+    return `${near} ink pixels, page turned 90°`;
+  });
+
+  await check('a sticky note becomes a PDF comment that keeps any text', async () => {
+    for (const p of state.pages) p.stamps = [];
+    addStamps([state.pages[0]], [{
+      group: 'c1', type: 'comment', text: 'Größe prüfen ✓', color: '#ffd60a',
+      created: Date.UTC(2026, 9, 12), u: 0.9, v: 0.9, rot: 0, opacity: 1,
+    }]);
+    const bytes = await assemble(state.pages);
+    const out = await reopen(bytes);
+    const page = await out.doc.getPage(1);
+    const notes = (await page.getAnnotations()).filter((a) => a.subtype === 'Text');
+    // The rect is in the page's own coordinates; the viewport turns it into
+    // what a reader sees, /Rotate included.
+    const view = page.getViewport({ scale: 1 });
+    page.cleanup();
+    assert(notes.length === 1, `found ${notes.length} text annotations`);
+    const [note] = notes;
+    const contents = note.contentsObj?.str ?? note.contents;
+    assert(contents === 'Größe prüfen ✓', `comment reads "${contents}"`);
+    const [x0, y0, x1, y1] = note.rect;
+    const [cx, cy] = view.convertToViewportPoint((x0 + x1) / 2, (y0 + y1) / 2);
+    assert(cx > view.width * 0.8 && cy < view.height * 0.2,
+      `comment shows at ${cx.toFixed(0)},${cy.toFixed(0)} on a ${view.width}×${view.height} page`);
+    await out.close();
+    for (const p of state.pages) p.stamps = [];
+    return `“${contents}”, top right of a page with /Rotate ${view.rotation}`;
+  });
+
   /* ───────── compression ───────── */
 
   await check('rasterizing shrinks a scan-like page and keeps its size', async () => {

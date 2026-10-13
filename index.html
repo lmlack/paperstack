@@ -136,6 +136,7 @@
       <button class="dock-tab" data-panel="compress" role="tab">Compress</button>
       <button class="dock-tab" data-panel="mark" role="tab">Watermark</button>
       <button class="dock-tab" data-panel="sign" role="tab">Sign</button>
+      <button class="dock-tab" data-panel="notes" role="tab">Notes</button>
       <button class="dock-tab" data-panel="extract" role="tab">Extract</button>
       <button class="dock-tab" data-panel="split" role="tab">Split</button>
     </nav>
@@ -255,6 +256,54 @@
 
         <button class="btn primary block" id="btnWmApply">Add watermark</button>
         <div class="stamplist" id="stampList"></div>
+      </div>
+
+      <!-- Notes -->
+      <div class="panel" id="panel-notes">
+        <div class="seg" id="ntKind">
+          <button class="active" data-v="note">On the page</button>
+          <button data-v="comment">Sticky note</button>
+        </div>
+        <p class="hint" id="ntKindHint"></p>
+
+        <label class="lbl" for="ntPage">Page</label>
+        <select id="ntPage"></select>
+        <label class="lbl" for="ntText">Note</label>
+        <textarea id="ntText" rows="4" placeholder="Check this figure before Friday"></textarea>
+
+        <div id="ntStyle">
+          <div class="field-row">
+            <div>
+              <label class="lbl" for="ntFont">Typeface</label>
+              <select id="ntFont">
+                <option value="Helvetica">Helvetica</option>
+                <option value="HelveticaBold">Helvetica Bold</option>
+                <option value="TimesRoman">Times</option>
+                <option value="Courier">Courier</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl" for="ntColor">Ink</label>
+              <input type="color" id="ntColor" value="#1d1d1f">
+            </div>
+          </div>
+          <label class="lbl" for="ntSize">Size <output id="ntSizeOut">12 pt</output></label>
+          <input type="range" id="ntSize" min="6" max="36" step="1" value="12">
+          <label class="lbl">Card</label>
+          <div class="seg" id="ntBg">
+            <button class="active" data-v="#fff3a8">Yellow</button>
+            <button data-v="#ffffff">White</button>
+            <button data-v="none">None</button>
+          </div>
+        </div>
+
+        <div id="ntCommentStyle" hidden>
+          <label class="lbl" for="ntIconColor">Icon color</label>
+          <input type="color" id="ntIconColor" value="#ffd60a">
+        </div>
+
+        <button class="btn primary block" id="btnNtPlace">Place on page…</button>
+        <div class="stamplist" id="noteList"></div>
       </div>
 
       <!-- Sign -->
@@ -434,15 +483,15 @@
 <div class="modal" id="placeModal" hidden>
   <div class="modal-card">
     <header>
-      <strong>Position your signature</strong>
+      <strong id="placeTitle">Position your signature</strong>
       <button class="btn ghost icon-btn" id="placeClose" aria-label="Close">✕</button>
     </header>
     <div class="place-stage" id="placeStage">
       <canvas id="placeCanvas"></canvas>
-      <div class="place-item" id="placeItem"><img alt="Signature"><span class="grip" data-dir="se"></span></div>
+      <div class="place-item" id="placeItem"><span class="grip" data-dir="se"></span></div>
     </div>
     <footer>
-      <span class="muted">Drag to move, or grab the corner to resize</span>
+      <span class="muted" id="placeHint">Drag to move, or grab the corner to resize</span>
       <div class="field-row">
         <button class="btn" id="placeCancel">Cancel</button>
         <button class="btn primary" id="placeConfirm">Place signature</button>

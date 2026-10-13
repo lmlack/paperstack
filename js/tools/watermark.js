@@ -5,6 +5,7 @@ import { $, $$, el, segment, bindRange, uid, parseRanges } from '../lib/dom.js';
 import { state, on, addAsset, addStamps, removeStampGroup, stampGroups } from '../state.js';
 import { toast } from '../ui/feedback.js';
 import { normalizeAngle } from '../lib/geometry.js';
+import { NOTE_TYPES } from './notes.js';
 
 const TILE_COLS = 3;
 const TILE_ROWS = 4;
@@ -147,7 +148,8 @@ function describe(stamp) {
 function renderStampList() {
   const host = $('#stampList');
   host.textContent = '';
-  const groups = stampGroups();
+  // Notes have their own list in the Notes panel.
+  const groups = stampGroups().filter((g) => !NOTE_TYPES.has(g.stamp.type));
   if (!groups.length) return;
 
   host.append(el('hr'), el('div', { class: 'lbl', text: `Queued marks (${groups.length})` }));
