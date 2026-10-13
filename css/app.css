@@ -339,21 +339,34 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .tile .expand svg { width: 21px; height: 21px; }
 .tile:hover .expand, .tile .expand:focus-visible { opacity: 1; }
 
-.tile-bar { display: flex; align-items: center; gap: 4px; padding: 7px 3px 0; }
+.tile-bar { display: flex; align-items: center; gap: 6px; padding: 8px 2px 0; }
+/* The page number reads as a label, not a footnote: full-strength ink on a
+   small badge, lit in the accent when the page is selected. */
 .tile-bar .num {
-  font-family: var(--mono); font-size: var(--text-xs); font-weight: 700;
-  color: var(--ink-3); font-variant-numeric: tabular-nums; min-width: 2ch;
+  font-family: var(--mono); font-size: var(--text-sm); font-weight: 700;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+  min-width: 2.4em; padding: 2px 8px; text-align: center;
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--pill);
 }
-.tile-bar .src { font-size: var(--text-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.tile-bar .acts { display: flex; gap: 1px; opacity: 0; transition: opacity .12s; }
+.tile.sel .tile-bar .num { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.tile-bar .src { font-size: var(--text-xs); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+/* The per-page buttons are always there, a little muted until the page is
+   hovered or selected. They used to be invisible until then, which on a
+   phone, with no hover, meant they were effectively hidden. */
+.tile-bar .acts { display: flex; gap: 1px; margin-left: auto; opacity: .7; transition: opacity .12s; }
 .tile:hover .tile-bar .acts, .tile.sel .tile-bar .acts, .tile:focus-within .tile-bar .acts { opacity: 1; }
 .tile-bar .acts button {
   background: transparent; border: 0; color: var(--ink-2); cursor: pointer;
-  padding: 4px; border-radius: var(--pill); display: grid; place-items: center;
+  padding: 5px; border-radius: var(--pill); display: grid; place-items: center;
 }
 .tile-bar .acts button:hover { background: var(--bg-3); color: var(--ink); }
 .tile-bar .acts button.rm:hover { color: var(--danger); }
-.tile-bar .acts svg { width: 15px; height: 15px; }
+.tile-bar .acts svg { width: 17px; height: 17px; }
+/* Touch screens: full strength, and big enough to tap. */
+@media (hover: none) {
+  .tile-bar .acts { opacity: 1; }
+  .tile-bar .acts button { padding: 6px; }
+}
 
 /* stamp previews drawn over a page */
 .stamps { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
