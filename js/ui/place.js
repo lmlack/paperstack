@@ -48,7 +48,12 @@ export async function place(page, { title, confirm, hint, build }) {
 
   await withBusy('Rendering page…', async () => {
     const { w: wPt, h: hPt, rotation } = await displayInfo(page);
-    const scale = Math.min(STAGE_MAX.w / wPt, STAGE_MAX.h / hPt, 2);
+    // Fit the page to the screen as well as to the stage cap: on a phone the
+    // window's header, hint and buttons need about 260px of the height, and
+    // a landscape page must not run wider than the screen.
+    const maxW = Math.min(STAGE_MAX.w, window.innerWidth - 56);
+    const maxH = Math.max(200, Math.min(STAGE_MAX.h, window.innerHeight - 260));
+    const scale = Math.min(maxW / wPt, maxH / hPt, 2);
     const canvas = await renderPage(state.sources.get(page.srcId), page.index, scale, { rotation });
 
     const target = $('#placeCanvas');
