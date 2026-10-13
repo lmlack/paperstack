@@ -187,8 +187,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 }
 :root[data-theme="dark"] .topbar-stats { color: var(--accent); border-color: var(--line); }
 .topbar-stats .dot { color: var(--ink-3); }
-.topbar-actions { margin-left: auto; display: flex; gap: 9px; align-items: center; }
-.topbar-stats:not([hidden]) + .topbar-actions { margin-left: 0; }
+/* The theme toggle sits outside the action group, so on a phone it can stay
+   on the top row beside the logo while the actions wrap below. On a wide
+   screen it simply leads the actions. */
+#themeToggle { margin-left: auto; }
+.topbar-stats:not([hidden]) + #themeToggle { margin-left: 0; }
+.topbar-actions { display: flex; gap: 9px; align-items: center; }
 
 /* ───────────────────────── buttons ───────────────────────── */
 .btn {
@@ -368,7 +372,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
   background: var(--panel); border-left: 1px solid var(--line);
 }
 .dock-tabs {
-  display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between;
+  display: grid; grid-template-columns: repeat(4, minmax(auto, 1fr));
   border-bottom: 1px solid var(--line); flex: none;
   padding: 8px 8px 0; gap: 4px;
 }
@@ -592,8 +596,13 @@ textarea {
   .dock { width: auto; border-left: 0; border-top: 1px solid var(--line); }
   .pagegrid { padding: 14px; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
   .topbar { height: auto; flex-wrap: wrap; padding: 10px 12px; gap: 10px; }
+  /* Two deliberate rows: back link, logo and theme toggle; then the actions,
+     with the stats under them. Left to wrap on its own, the toggle rode down
+     with the actions and ended up on a lower row. */
+  #themeToggle, .topbar-stats:not([hidden]) + #themeToggle { margin-left: auto; }
+  .topbar-actions { order: 2; width: 100%; justify-content: flex-end; }
+  .topbar-actions:not(:has(> :not([hidden]))) { display: none; }
   .topbar-stats { order: 3; margin-left: 0; }
-  .topbar-actions { margin-left: auto; }
   .backlink span { display: none; }
   .backlink { padding: 7px 9px; }
   .topbar-divide { display: none; }
