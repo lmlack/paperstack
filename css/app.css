@@ -161,7 +161,6 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .backlink:hover .chev { transform: translateX(-2px); }
 /* gwark.dev's own mark, inlined so it takes the link's color in both themes */
 .backlink .gwark-mark { width: 26px; height: 26px; }
-.backlink .gwark-mark g { stroke-width: 6; }
 .backlink:hover { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
 .backlink:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
 :root[data-theme="dark"] .backlink:hover { text-shadow: 0 0 10px rgba(74, 240, 247, .5); }

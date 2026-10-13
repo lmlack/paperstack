@@ -59,8 +59,12 @@ export async function probe() {
     // gwark.dev's own mark, drawn in the link's color rather than a flat image
     const mark = back.querySelector('.gwark-mark');
     assert(mark, 'the gwark.dev mark is missing from the link');
-    assert(mark.querySelectorAll('rect').length === 12, 'the gear lost its teeth');
-    assert(mark.getAttribute('viewBox') === '-70 -70 140 140', 'the mark was redrawn by hand');
+    // Traced from the master logo: a 12-tooth gear outline (48 corners), and
+    // masks for the orbit crossing over the gear and globe.
+    const gear = [...mark.querySelectorAll('g path')].find((p) => (p.getAttribute('d').match(/L/g) || []).length === 47);
+    assert(gear, 'the gear lost its teeth');
+    assert(mark.querySelectorAll('mask').length === 3, 'the orbit crossings are missing');
+    assert(mark.getAttribute('viewBox') === '0 0 100 100', 'the mark was redrawn by hand');
     const painted = getComputedStyle(mark.querySelector('g')).stroke;
     assert(painted === getComputedStyle(back).color,
       `the mark is painted ${painted} but the link is ${getComputedStyle(back).color}`);
