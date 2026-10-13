@@ -15,7 +15,7 @@ Any static server works (`python3 -m http.server`, `npx serve`, nginx, GitHub
 Pages). A plain `file://` open will *not* work, because browsers refuse to load
 ES modules from the filesystem. That is the only reason `serve.js` exists.
 
-It lives at `gwark.dev/paperstack/` and links back from the top bar, which
+It lives at `paperstack.gwark.dev` and links back from the top bar, which
 carries gwark.dev's own mark and returns you to the `#projects` rack it was
 launched from. The empty state links home too.
 
@@ -166,7 +166,7 @@ Two licenses, because the code and the writing are different kinds of work.
 Attribution that satisfies CC BY:
 
 ```
-Paperstack by lmlack, CC BY 4.0, https://gwark.dev/paperstack/
+Paperstack by lmlack, CC BY 4.0, https://paperstack.gwark.dev/
 ```
 
 The gwark mark, inlined in the header of `index.html`, is brand identity, not
