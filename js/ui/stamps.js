@@ -7,12 +7,23 @@
 
 import { $, el } from '../lib/dom.js';
 import { state } from '../state.js';
+import { NOTE } from '../lib/textwrap.js';
 
 const FAMILY = {
   TimesRoman: 'Times, "Times New Roman", serif',
   TimesRomanItalic: 'Times, "Times New Roman", serif',
   Courier: 'ui-monospace, Menlo, monospace',
 };
+
+// Arial and Courier New share Helvetica's and Courier's glyph widths, so a note
+// wrapped with the PDF's own metrics breaks in the same places here.
+const NOTE_FAMILY = {
+  TimesRoman: 'Times, "Times New Roman", serif',
+  Courier: '"Courier New", Courier, monospace',
+};
+
+const COMMENT_PT = 20;
+const COMMENT_ICON = '<svg viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M8 8.5h8M8 12h5"/></svg>';
 
 /**
  * @param {HTMLElement} layer  an element with `position: absolute; inset: 0`
@@ -32,7 +43,26 @@ export function paintStamps(layer, page, pageWidthPt) {
     // CSS rotates clockwise, PDFs counter-clockwise.
     node.style.transform = `translate(-50%, -50%) rotate(${-stamp.rot}deg)`;
 
-    if (stamp.type === 'text') {
+    if (stamp.type === 'note') {
+      const pt = (n) => `${(n / widthPt) * 100}cqw`;
+      node.classList.add('note');
+      node.textContent = stamp.lines.join('\n');
+      Object.assign(node.style, {
+        width: `${stamp.w * 100}%`,
+        fontSize: pt(stamp.size),
+        padding: pt(stamp.size * NOTE.pad),
+        lineHeight: String(NOTE.line),
+        color: stamp.color,
+        background: stamp.bg ?? 'transparent',
+        fontFamily: NOTE_FAMILY[stamp.font] ?? 'Helvetica, Arial, sans-serif',
+        fontWeight: stamp.font === 'HelveticaBold' ? '700' : '400',
+      });
+    } else if (stamp.type === 'comment') {
+      node.classList.add('comment');
+      node.innerHTML = COMMENT_ICON;
+      node.style.width = `${(COMMENT_PT / widthPt) * 100}cqw`;
+      node.style.background = stamp.color;
+    } else if (stamp.type === 'text') {
       node.textContent = stamp.text;
       node.style.color = stamp.color;
       node.style.fontSize = `${(stamp.size / widthPt) * 100}cqw`;

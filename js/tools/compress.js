@@ -6,7 +6,7 @@ import { PDFDocument } from '../../vendor/pdf-lib.esm.min.js';
 import { $, el, segment, bindRange, fmtBytes, download, safeName } from '../lib/dom.js';
 import { openDocument, closeDocument, renderPage, canvasToBlob } from '../pdfjs.js';
 import { state, on, totalBytes, replaceWith } from '../state.js';
-import { assemble } from '../assemble.js';
+import { assemble, addComment } from '../assemble.js';
 import { withBusy, toast } from '../ui/feedback.js';
 
 const PRESETS = {
@@ -131,6 +131,11 @@ async function rasterize(dpi, quality, grayscale, ui) {
     const jpg = await out.embedJpg(new Uint8Array(await blob.arrayBuffer()));
     const sheet = out.addPage([pointSize.width, pointSize.height]);
     sheet.drawImage(jpg, { x: 0, y: 0, width: pointSize.width, height: pointSize.height });
+    // Sticky notes are annotations, not ink, so the redraw would drop them.
+    // The redrawn page is upright at its displayed size, so no rotation applies.
+    for (const stamp of state.pages[i].stamps) {
+      if (stamp.type === 'comment') addComment(out, sheet, stamp, { W: pointSize.width, H: pointSize.height, rot: 0 });
+    }
 
     canvas.width = canvas.height = 0;   // let the bitmap go early on long documents
   }

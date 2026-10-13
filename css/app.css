@@ -355,6 +355,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .stamps { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .stamps .st { position: absolute; transform-origin: center; white-space: nowrap; font-weight: 700; line-height: 1; }
 .stamps .st img { display: block; width: 100%; height: auto; }
+.stamps .st.note { white-space: pre; box-sizing: border-box; text-align: left; }
+.stamps .st.comment, .place-item .comment-pin {
+  aspect-ratio: 1; border-radius: 3px; color: #1d1d1f; display: grid; place-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+.stamps .st.comment svg, .place-item .comment-pin svg { width: 80%; height: 80%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 
 /* ───────────────────────── dock ───────────────────────── */
 .dock {
@@ -362,7 +368,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
   background: var(--panel); border-left: 1px solid var(--line);
 }
 .dock-tabs {
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between;
   border-bottom: 1px solid var(--line); flex: none;
   padding: 8px 8px 0; gap: 4px;
 }
@@ -370,7 +376,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
   appearance: none; background: transparent; border: 1.5px solid transparent;
   border-radius: var(--pill);
   color: var(--ink-2); font-family: inherit; font-size: var(--text-ui); font-weight: 700;
-  padding: 8px 4px; cursor: pointer; margin-bottom: 8px;
+  padding: 8px 9px; cursor: pointer; margin-bottom: 8px;
 }
 .dock-tab:hover { color: var(--ink); background: var(--bg-3); }
 .dock-tab.active {
@@ -551,6 +557,8 @@ textarea {
 .place-stage canvas { display: block; }
 .place-item { position: absolute; border: 2px dashed var(--accent); border-radius: 4px; cursor: move; }
 .place-item img { display: block; width: 100%; height: 100%; pointer-events: none; }
+.place-item .note-card { white-space: pre; pointer-events: none; text-align: left; }
+.place-item.is-comment .comment-pin { width: 100%; height: 100%; pointer-events: none; }
 .place-item .grip {
   position: absolute; right: -7px; bottom: -7px; width: 15px; height: 15px;
   background: var(--accent); border: 2.5px solid var(--panel); border-radius: 50%; cursor: nwse-resize;

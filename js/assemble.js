@@ -5,10 +5,11 @@
 // they *see*, so stamps are stored in "display space" (origin bottom-left of the
 // rotated page, fractions of its width/height) and mapped back here.
 
-import { PDFDocument, StandardFonts, degrees, rgb } from '../vendor/pdf-lib.esm.min.js';
+import { PDFDocument, PDFHexString, PDFString, StandardFonts, degrees, rgb } from '../vendor/pdf-lib.esm.min.js';
 import { state, srcOf } from './state.js';
 import { hexToRgb01 } from './lib/dom.js';
-import { norm, visualSize, anchorStamp } from './lib/geometry.js';
+import { norm, visualSize, anchorStamp, toPageSpace } from './lib/geometry.js';
+import { NOTE, noteBox } from './lib/textwrap.js';
 
 const FONTS = {
   Helvetica: StandardFonts.Helvetica,
@@ -71,7 +72,8 @@ export async function assemble(pages, onProgress) {
     if (record.stamps.length) {
       const { width: W, height: H } = page.getSize();
       for (const stamp of record.stamps) {
-        await drawStamp(page, stamp, { W, H, rot }, { font, image });
+        if (stamp.type === 'comment') addComment(out, page, stamp, { W, H, rot });
+        else await drawStamp(page, stamp, { W, H, rot }, { font, image });
       }
     }
     onProgress?.(i + 1, pages.length);
@@ -81,6 +83,10 @@ export async function assemble(pages, onProgress) {
 }
 
 async function drawStamp(page, stamp, box, resolve) {
+  if (stamp.type === 'note') {
+    await drawNote(page, stamp, box, await resolve.font(stamp.font));
+    return;
+  }
   if (stamp.type === 'text') {
     const font = await resolve.font(stamp.font);
     const width = font.widthOfTextAtSize(stamp.text, stamp.size);
@@ -109,6 +115,88 @@ async function drawStamp(page, stamp, box, resolve) {
     opacity: stamp.opacity,
     rotate: degrees(angle),
   });
+}
+
+/**
+ * A note written onto the page: an optional card, then each stored line, left
+ * aligned. Every piece is placed by its own center in display space, so the
+ * page's /Rotate is absorbed by anchorStamp exactly as it is for watermarks.
+ */
+async function drawNote(page, stamp, box, font) {
+  const { vw, vh } = visualSize(box.W, box.H, box.rot);
+  const { size, lines } = stamp;
+  const outer = noteBox(lines, size, stamp.w * vw);
+
+  if (stamp.bg) {
+    const { x, y, angle } = anchorStamp({ u: stamp.u, v: stamp.v, rot: 0 }, box, outer.width, outer.height);
+    const { r, g, b } = hexToRgb01(stamp.bg);
+    page.drawRectangle({ x, y, width: outer.width, height: outer.height, rotate: degrees(angle), color: rgb(r, g, b) });
+  }
+
+  const { r, g, b } = hexToRgb01(stamp.color);
+  const left = stamp.u * vw - outer.width / 2 + size * NOTE.pad;
+  const top = stamp.v * vh + outer.height / 2 - size * NOTE.pad;
+  const ascent = font.heightAtSize(size, { descender: false });
+  lines.forEach((line, i) => {
+    if (!line) return;
+    const width = font.widthOfTextAtSize(line, size);
+    const centerY = top - (i + 0.5) * size * NOTE.line;
+    const { x, y, angle } = anchorStamp({ u: (left + width / 2) / vw, v: centerY / vh, rot: 0 }, box, width, ascent);
+    page.drawText(line, { x, y, size, font, color: rgb(r, g, b), rotate: degrees(angle) });
+  });
+}
+
+const COMMENT_PT = 20;   // the icon's box; viewers draw their own icon in it
+
+/**
+ * A sticky-note comment: a real /Text annotation, so Preview and Acrobat show
+ * it as a note icon that opens, can be edited, and does not print. Exported so
+ * the rasterizing compressor can carry comments over to its redrawn pages.
+ */
+export function addComment(doc, page, stamp, box) {
+  const { vw, vh } = visualSize(box.W, box.H, box.rot);
+  const cx = stamp.u * vw;
+  const cy = stamp.v * vh;
+  const half = COMMENT_PT / 2;
+  const corners = [[cx - half, cy - half], [cx + half, cy + half]]
+    .map(([x, y]) => toPageSpace(x, y, box.W, box.H, box.rot));
+  const xs = corners.map((c) => c.x);
+  const ys = corners.map((c) => c.y);
+  const { r, g, b } = hexToRgb01(stamp.color);
+
+  const annot = doc.context.obj({
+    Type: 'Annot',
+    Subtype: 'Text',
+    Rect: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)],
+    Contents: PDFHexString.fromText(stamp.text),
+    Name: 'Comment',
+    C: [r, g, b],
+    F: 24,                 // NoZoom | NoRotate, and no Print flag
+    Open: false,
+    M: PDFString.fromDate(new Date(stamp.created ?? Date.now())),
+  });
+  page.node.addAnnot(doc.context.register(annot));
+}
+
+/**
+ * Text metrics for laying out notes before export, from the same standard
+ * fonts the export embeds. `clean` swaps characters the font cannot encode
+ * (emoji, most non-Latin scripts) for "?", which pdf-lib would otherwise
+ * refuse at export time.
+ */
+const metricFonts = new Map();
+let metricDoc;
+export async function noteMetrics(key) {
+  if (!metricFonts.has(key)) {
+    metricDoc ??= await PDFDocument.create();
+    const font = await metricDoc.embedFont(FONTS[key] ?? StandardFonts.Helvetica);
+    const charset = new Set(font.getCharacterSet());
+    metricFonts.set(key, {
+      measure: (text, size) => font.widthOfTextAtSize(text, size),
+      clean: (text) => [...text].map((ch) => (ch === '\n' || charset.has(ch.codePointAt(0)) ? ch : '?')).join(''),
+    });
+  }
+  return metricFonts.get(key);
 }
 
 /**

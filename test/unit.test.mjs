@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { makeZip } from '../js/lib/zip.js';
+import { wrapText, noteBox, NOTE } from '../js/lib/textwrap.js';
 import { parseRanges, parseRangeGroups, hexToRgb01, safeName, fmtBytes } from '../js/lib/dom.js';
 import { visualSize, toPageSpace, toDisplaySpace, anchorStamp, centerFromAnchor, norm, normalizeAngle } from '../js/lib/geometry.js';
 
@@ -62,6 +63,30 @@ test('normalizeAngle folds any typed angle into (-180, 180]', () => {
   assert.equal(normalizeAngle(270), -90);
   assert.equal(normalizeAngle(-200), 160);
   assert.equal(normalizeAngle(397.5), 37.5);
+});
+
+// One unit per character keeps the wrapping arithmetic readable.
+const chars = (s) => s.length;
+
+test('wrapText breaks between words and keeps typed line breaks', () => {
+  assert.deepEqual(wrapText('the quick brown fox', 10, chars), ['the quick', 'brown fox']);
+  assert.deepEqual(wrapText('one\ntwo three', 20, chars), ['one', 'two three']);
+  assert.deepEqual(wrapText('a\n\nb', 20, chars), ['a', '', 'b']);
+  assert.deepEqual(wrapText('trailing\n\n', 20, chars), ['trailing']);
+  assert.deepEqual(wrapText('windows\r\nbreaks', 20, chars), ['windows', 'breaks']);
+});
+
+test('wrapText cuts a word too long for any line instead of overflowing', () => {
+  const lines = wrapText('see abcdefghijklmnop ok', 6, chars);
+  assert.deepEqual(lines, ['see', 'abcdef', 'ghijkl', 'mnop', 'ok']);
+  assert.ok(lines.every((l) => l.length <= 6));
+});
+
+test('noteBox height grows by one line pitch per line', () => {
+  const one = noteBox(['a'], 10, 100);
+  const three = noteBox(['a', 'b', 'c'], 10, 100);
+  assert.equal(one.width, 100);
+  assert.equal(three.height - one.height, 2 * 10 * NOTE.line);
 });
 
 test('visualSize swaps the axes on quarter turns only', () => {

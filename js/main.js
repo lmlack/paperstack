@@ -10,6 +10,8 @@ import { initOrganize } from './tools/organize.js';
 import { initCompress } from './tools/compress.js';
 import { initWatermark } from './tools/watermark.js';
 import { initSign } from './tools/sign.js';
+import { initNotes } from './tools/notes.js';
+import { initPlacement } from './ui/place.js';
 import { initExtract } from './tools/extract.js';
 import { initSplit } from './tools/split.js';
 
@@ -227,7 +229,9 @@ initViewer();
 initOrganize();
 initCompress();
 initWatermark();
+initPlacement();
 initSign();
+initNotes();
 initExtract();
 initSplit();
 

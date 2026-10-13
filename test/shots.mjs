@@ -132,6 +132,29 @@ try {
   })()`);
   await shot('7-place-signature');
 
+  const openPlace = `for (let i = 0; i < 100 && document.querySelector('#placeModal').hidden; i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }`;
+  await run(`(async () => {
+    document.querySelector('#placeCancel').click();
+    document.querySelector('.dock-tab[data-panel="notes"]').click();
+    document.querySelector('#ntText').value = 'Check this figure against the Q3 numbers before Friday';
+    document.querySelector('#btnNtPlace').click();
+    ${openPlace}
+  })()`);
+  await shot('7b-place-note');
+
+  await run(`(async () => {
+    document.querySelector('#placeConfirm').click();
+    document.querySelector('#ntKind [data-v="comment"]').click();
+    document.querySelector('#ntText').value = 'Is this the final number?';
+    document.querySelector('#btnNtPlace').click();
+    ${openPlace}
+    document.querySelector('#placeConfirm').click();
+    await new Promise(r => setTimeout(r, 300));
+  })()`);
+  await shot('7c-notes-panel');
+
   await run(`(async () => {
     document.querySelector('#placeCancel').click();
     document.querySelector('#pagegrid .tile .expand span').click();
