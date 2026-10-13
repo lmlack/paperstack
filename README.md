@@ -20,10 +20,10 @@ carries gwark.dev's own mark and returns you to the `#projects` rack it was
 launched from. The empty state links home too.
 
 The mark is inlined in `index.html` rather than loaded as a file, so it takes
-the link's color in both themes. It is gwark.dev's `assets/mark.svg` with the
-inner globe and its horizon line left out: below roughly 34px those details
-close into a solid blob, and the gear with its orbit still reads at 26px. The
-full artwork is unchanged on gwark.dev.
+the link's color in both themes. It is traced from gwark.dev's master logo
+artwork: the 12-tooth gear, the globe with its line and node, and the orbit
+whose front half crosses over both, drawn with masks so the crossings stay
+correct on any background.
 
 Both URLs live in `index.html` and in the `OUTBOUND_ALLOWED` list in
 `test/wiring.test.mjs`. A link to anywhere else fails that test.
