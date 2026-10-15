@@ -167,6 +167,26 @@ try {
   })()`);
   await shot('8-viewer-light');
 
+  // a line and some text put down in the viewer, with Draw still on
+  await run(`(async () => {
+    const ink = document.querySelector('#viewerInk');
+    document.querySelector('#viewType').click();
+    let b = ink.getBoundingClientRect();
+    ink.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 3, bubbles: true, cancelable: true,
+      clientX: b.left + b.width * 0.15, clientY: b.top + b.height * 0.55 }));
+    for (let i = 0; i < 40 && !ink.querySelector('textarea'); i++) await new Promise(r => setTimeout(r, 25));
+    const area = ink.querySelector('textarea');
+    area.value = 'Approved, see margin';
+    area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    document.querySelector('#viewDraw').click();
+    const fire = (type, fx, fy) => ink.dispatchEvent(new PointerEvent(type, {
+      pointerId: 4, bubbles: true, clientX: b.left + b.width * fx, clientY: b.top + b.height * fy }));
+    fire('pointerdown', 0.15, 0.6);
+    for (let i = 1; i <= 30; i++) fire('pointermove', 0.15 + i * 0.014, 0.6 + Math.sin(i / 3) * 0.008);
+    fire('pointerup', 0.57, 0.6);
+  })()`);
+  await shot('8b-viewer-draw');
+
   await run(`document.documentElement.dataset.theme = 'dark'`);
   await shot('9-viewer-dark');
 
@@ -176,6 +196,15 @@ try {
     { width: 430, height: 940, deviceScaleFactor: 2, mobile: true });
   await run(`document.querySelector('.dock-tab[data-panel="pages"]').click(); window.scrollTo(0,0)`);
   await shot('10-phone');
+
+  await run(`(async () => {
+    document.querySelector('#pagegrid .tile .expand span').click();
+    for (let i = 0; i < 100 && document.querySelector('#viewer').classList.contains('busy'); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    await new Promise(r => setTimeout(r, 300));
+  })()`);
+  await shot('11-phone-viewer-draw');
 } catch (err) {
   console.error('shots failed:', err.message);
   process.exitCode = 1;

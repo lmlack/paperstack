@@ -412,6 +412,20 @@
     <span class="viewer-title" id="viewTitle"></span>
 
     <div class="viewer-tools">
+      <div class="viewer-modes" role="group" aria-label="Mark the page">
+        <button class="btn tiny ghost viewer-mode" id="viewDraw" aria-pressed="false" title="Draw on the page (D)">
+          <svg viewBox="0 0 24 24"><path d="m15.5 4.5 4 4L9 19H5v-4Z"/><path d="m13 7 4 4"/></svg>Draw
+        </button>
+        <button class="btn tiny ghost viewer-mode" id="viewType" aria-pressed="false" title="Type on the page (T)">
+          <svg viewBox="0 0 24 24"><path d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6"/></svg>Text
+        </button>
+        <!-- A plain arrow and a word, so it never reads as one of the curved rotate arrows. -->
+        <button class="btn tiny secondary" id="viewUndo" title="Undo the last mark on this page (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6M4 12h16"/></svg>Undo
+        </button>
+      </div>
+
+      <span class="viewer-sep"></span>
       <button class="btn ghost icon-btn" id="viewZoomOut" aria-label="Zoom out">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M8.2 11h5.6M20 20l-4.4-4.4"/></svg>
       </button>
@@ -440,10 +454,27 @@
     </button>
   </header>
 
+  <div class="viewer-pen" id="viewPen" hidden>
+    <div class="viewer-swatches" id="viewSwatches" role="group" aria-label="Ink color">
+      <button data-c="#1d1d1f" aria-label="Black" class="active"></button>
+      <button data-c="#1f4fd1" aria-label="Blue"></button>
+      <button data-c="#d12a2a" aria-label="Red"></button>
+      <button data-c="#178a3d" aria-label="Green"></button>
+      <input type="color" id="viewColor" value="#1d1d1f" aria-label="Any color">
+    </div>
+    <label class="viewer-size">
+      <span id="viewSizeLabel">Pen</span>
+      <input type="range" id="viewSize" min="1" max="12" step="0.5" value="2">
+      <output id="viewSizeOut">2 pt</output>
+    </label>
+    <span class="muted viewer-pen-hint" id="viewPenHint"></span>
+  </div>
+
   <div class="viewer-stage" id="viewerStage">
     <div class="viewer-sheet" id="viewerSheet">
       <canvas id="viewerCanvas"></canvas>
       <div class="stamps" id="viewerStamps"></div>
+      <div class="viewer-ink" id="viewerInk"></div>
     </div>
   </div>
 
@@ -452,6 +483,9 @@
     <span><kbd>+</kbd><kbd>−</kbd> zoom</span>
     <span><kbd>0</kbd> fit</span>
     <span><kbd>[</kbd><kbd>]</kbd> rotate</span>
+    <span><kbd>D</kbd> draw</span>
+    <span><kbd>T</kbd> text</span>
+    <span><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span>
     <span><kbd>Esc</kbd> close</span>
   </footer>
 </div>

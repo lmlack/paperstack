@@ -295,6 +295,73 @@ export async function probe() {
     return 'portrait → landscape → portrait';
   });
 
+  await check('drawing in the viewer leaves a line on the page', async () => {
+    await settled();
+    const page = state.pages[1];
+    const before = page.stamps.length;
+    $('#viewDraw').click();
+    assert($('#viewDraw').getAttribute('aria-pressed') === 'true', 'Draw did not switch on');
+    assert(visible($('#viewPen')), 'no pen options while drawing');
+    const ink = $('#viewerInk');
+    const box = ink.getBoundingClientRect();
+    const fire = (type, fx, fy) => ink.dispatchEvent(new PointerEvent(type, {
+      pointerId: 7, bubbles: true, cancelable: true,
+      clientX: box.left + fx * box.width, clientY: box.top + fy * box.height }));
+    fire('pointerdown', 0.2, 0.2);
+    for (let i = 1; i <= 10; i++) fire('pointermove', 0.2 + i * 0.05, 0.2 + i * 0.02);
+    fire('pointerup', 0.7, 0.4);
+    await until(() => page.stamps.length === before + 1, 'the stroke to be kept');
+    const stroke = page.stamps.at(-1);
+    assert(stroke.type === 'ink' && stroke.points.length >= 10, `stored ${stroke.points?.length} points`);
+    assert(Math.abs(stroke.points[0][0] - 0.2) < 0.01 && Math.abs(stroke.points[0][1] - 0.8) < 0.01,
+      `line starts at ${stroke.points[0]}`);
+    assert($$('#viewerStamps svg.ink').length === 1, 'the viewer does not show the line');
+    assert(!$('#viewUndo').disabled, 'undo is not offered');
+    return `${stroke.points.length} points kept`;
+  });
+
+  await check('typing in the viewer places text where it was clicked', async () => {
+    const page = state.pages[1];
+    const before = page.stamps.length;
+    $('#viewType').click();
+    assert($('#viewDraw').getAttribute('aria-pressed') === 'false', 'Draw stayed on with Text');
+    const ink = $('#viewerInk');
+    const box = ink.getBoundingClientRect();
+    ink.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 8, bubbles: true, cancelable: true,
+      clientX: box.left + box.width * 0.3, clientY: box.top + box.height * 0.6 }));
+    await until(() => $('#viewerInk textarea'), 'a text box');
+    const area = $('#viewerInk textarea');
+    area.value = 'Signed off';
+    area.dispatchEvent(new Event('input'));
+    area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await until(() => page.stamps.length === before + 1, 'the text to be kept');
+    const note = page.stamps.at(-1);
+    assert(note.type === 'note' && note.text === 'Signed off' && note.bg === null, `stored ${JSON.stringify(note)}`);
+    const left = note.u - note.w / 2;
+    assert(Math.abs(left - 0.3) < 0.05, `text starts at u=${left.toFixed(3)}, clicked at 0.3`);
+    assert(Math.abs(note.v - 0.4) < 0.05, `text sits at v=${note.v.toFixed(3)}, clicked at 0.4`);
+    assert(!$('#viewerInk textarea'), 'the text box stayed open');
+    return `placed at u=${left.toFixed(2)}, v=${note.v.toFixed(2)}`;
+  });
+
+  await check('undo takes back the latest mark, then the one before', async () => {
+    const page = state.pages[1];
+    const count = page.stamps.length;
+    $('#viewUndo').click();
+    await until(() => page.stamps.length === count - 1, 'one undo');
+    assert(page.stamps.at(-1).type === 'ink', 'undo removed the wrong mark');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
+    await until(() => page.stamps.length === count - 2, 'Ctrl+Z');
+    assert($('#viewUndo').disabled, 'undo is still offered with nothing left');
+    assert($$('#viewerStamps > *').length === 0, 'marks still drawn after undo');
+
+    // Esc steps out of Text first, then closes.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert(!$('#viewer').hidden, 'Esc closed the viewer instead of leaving Text');
+    assert($('#viewType').getAttribute('aria-pressed') === 'false', 'Text is still on');
+    return 'both marks gone';
+  });
+
   await check('escape closes the viewer and leaves the document alone', async () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await until(() => $('#viewer').hidden, 'the viewer to close');

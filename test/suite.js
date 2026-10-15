@@ -287,6 +287,61 @@ export async function runSuite(logger) {
     return `${near} ink pixels, page turned 90°`;
   });
 
+  await check('a note stays centered on a page whose box is offset or cropped', async () => {
+    const { PDFDocument } = await import('../vendor/pdf-lib.esm.min.js');
+    const shapes = {
+      'MediaBox at (40, 30)': (p) => p.setMediaBox(40, 30, 612, 792),
+      'CropBox inset': (p) => p.setCropBox(72, 50, 500, 700),
+    };
+    const found = [];
+    for (const [label, shape] of Object.entries(shapes)) {
+      const doc = await PDFDocument.create();
+      shape(doc.addPage([612, 792]));
+      const before = state.pages.length;
+      await addPdf(new File([await doc.save()], 'boxed.pdf', { type: 'application/pdf' }));
+      const page = state.pages[before];
+      addStamps([page], [{
+        group: 'nb', type: 'note', text: 'Mid', lines: ['Mid'], font: 'Helvetica', size: 14,
+        color: '#000000', bg: '#ffff00', u: 0.5, v: 0.5, w: 0.3, rot: 0, opacity: 1,
+      }]);
+      const out = await reopen(await assemble([page]));
+      const canvas = await renderPage({ pdfjs: out.doc }, 0, 1);
+      const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      let left = Infinity, right = -1, top = Infinity, bottom = -1;
+      for (let i = 0; i < data.length; i += 4) {
+        if (!(data[i] > 200 && data[i + 1] > 200 && data[i + 2] < 100)) continue;
+        const x = (i / 4) % canvas.width;
+        const y = Math.floor(i / 4 / canvas.width);
+        left = Math.min(left, x); right = Math.max(right, x);
+        top = Math.min(top, y); bottom = Math.max(bottom, y);
+      }
+      await out.close();
+      deletePages([page]);
+      near((left + right) / 2 / canvas.width, 0.5, 0.01, `${label}: card center x`);
+      near((top + bottom) / 2 / canvas.height, 0.5, 0.01, `${label}: card center y`);
+      found.push(label);
+    }
+    return `centered on ${found.join(', ')}`;
+  });
+
+  await check('a line drawn in the viewer is exported as a vector stroke', async () => {
+    for (const p of state.pages) p.stamps = [];
+    addStamps([state.pages[0]], [{
+      group: 'i1', type: 'ink', color: '#ff0000', width: 4,
+      points: [[0.2, 0.8], [0.4, 0.8], [0.4, 0.6]], u: 0.3, v: 0.7, rot: 0, opacity: 1,
+    }]);
+    const out = await reopen(await assemble(state.pages));
+    const canvas = await renderPage({ pdfjs: out.doc }, 0, 1);
+    const along = sample(canvas, [0.22, 0.18, 0.38, 0.22], isRed);
+    const down = sample(canvas, [0.38, 0.22, 0.42, 0.38], isRed);
+    const off = sample(canvas, [0.6, 0.6, 1, 1], isRed);
+    await out.close();
+    state.pages[0].stamps = [];
+    assert(along > 50 && down > 50, `line missing: ${along} across, ${down} down`);
+    assert(off === 0, `${off} red pixels away from the line`);
+    return `${along + down} ink pixels on the path`;
+  });
+
   await check('a sticky note becomes a PDF comment that keeps any text', async () => {
     for (const p of state.pages) p.stamps = [];
     addStamps([state.pages[0]], [{

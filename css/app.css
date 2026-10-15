@@ -370,6 +370,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .stamps .st { position: absolute; transform-origin: center; white-space: nowrap; font-weight: 700; line-height: 1; }
 .stamps .st img { display: block; width: 100%; height: auto; }
 .stamps .st.note { white-space: pre; box-sizing: border-box; text-align: left; }
+.stamps .ink, .viewer-ink svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.stamps .ink path, .viewer-ink path {
+  fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+}
 .stamps .st.comment, .place-item .comment-pin {
   aspect-ratio: 1; border-radius: 3px; color: #1d1d1f; display: grid; place-items: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
@@ -544,6 +548,47 @@ textarea {
   .viewer-tools #viewFit { padding-inline: 8px; }
   .viewer-sep-close { display: none; }
 }
+/* Draw / Text / Undo. The modes light up while on; Undo is a filled pill with
+   a word on it, deliberately unlike the bare curved rotate icons. */
+.viewer-modes { display: flex; align-items: center; gap: 4px; }
+.viewer-mode[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.viewer-pen {
+  flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px;
+  padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.viewer-swatches { display: flex; align-items: center; gap: 6px; }
+.viewer-swatches button {
+  width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1.5px var(--line); cursor: pointer; padding: 0;
+}
+.viewer-swatches button[data-c="#1d1d1f"] { background: #1d1d1f; }
+.viewer-swatches button[data-c="#1f4fd1"] { background: #1f4fd1; }
+.viewer-swatches button[data-c="#d12a2a"] { background: #d12a2a; }
+.viewer-swatches button[data-c="#178a3d"] { background: #178a3d; }
+.viewer-swatches button.active { box-shadow: 0 0 0 2px var(--accent); }
+.viewer-swatches input[type="color"] { width: 38px; height: 28px; padding: 2px; }
+.viewer-size { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 700; color: var(--ink-2); }
+.viewer-size input { width: 120px; }
+.viewer-size output { font-family: var(--mono); min-width: 5ch; }
+.viewer-pen-hint { font-size: var(--text-sm); }
+@media (max-width: 720px) {
+  .viewer-modes { width: 100%; justify-content: center; margin-bottom: 2px; }
+  .viewer-modes + .viewer-sep { display: none; }
+  .viewer-pen { padding: 8px 10px; justify-content: center; }
+  .viewer-pen-hint { display: none; }
+}
+
+/* the layer that catches the pen; inert unless a mode is on */
+.viewer-ink { position: absolute; inset: 0; pointer-events: none; }
+.viewer.mode-draw .viewer-ink { pointer-events: auto; cursor: crosshair; touch-action: none; }
+.viewer.mode-type .viewer-ink { pointer-events: auto; cursor: text; }
+.viewer-ink textarea {
+  position: absolute; margin: 0; border: 1.5px dashed var(--accent); border-radius: 3px;
+  background: rgba(255, 255, 255, .35); resize: none; overflow: hidden; outline: none;
+  white-space: pre; box-sizing: border-box; min-width: 2em; min-height: 0;
+}
+.viewer-ink textarea:focus-visible { outline: none; }
+
 .viewer-stage {
   flex: 1; overflow: auto; display: grid; place-content: safe center;
   padding: 28px; background: var(--bg-3);

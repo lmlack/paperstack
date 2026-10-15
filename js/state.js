@@ -290,9 +290,24 @@ export function selectRangeTo(u, anchorUid) {
 
 /* ───────────────────────── stamps ───────────────────────── */
 
+// Every addStamps call gets the next number, shared by all the stamps it adds,
+// so undo can take back the latest change to a page as one step even when it
+// was a tiled watermark of dozens of marks.
+let addedSeq = 0;
+
 export function addStamps(pages, stamps) {
-  for (const p of pages) p.stamps.push(...stamps.map((s) => ({ ...s, id: uid('st') })));
+  const at = ++addedSeq;
+  for (const p of pages) p.stamps.push(...stamps.map((s) => ({ ...s, id: uid('st'), at })));
   emit('pages');
+}
+
+/** Removes the most recent change made to one page. Returns false if there was none. */
+export function undoOnPage(page) {
+  if (!page?.stamps.length) return false;
+  const latest = Math.max(...page.stamps.map((s) => s.at ?? 0));
+  page.stamps = page.stamps.filter((s) => (s.at ?? 0) !== latest);
+  emit('pages');
+  return true;
 }
 
 export function removeStampGroup(group) {

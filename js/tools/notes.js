@@ -12,7 +12,8 @@ import { NOTE, wrapText } from '../lib/textwrap.js';
 import { toast } from '../ui/feedback.js';
 import { place } from '../ui/place.js';
 
-export const NOTE_TYPES = new Set(['note', 'comment']);
+// 'ink' is a line drawn in the viewer; it is listed here so it can be removed.
+export const NOTE_TYPES = new Set(['note', 'comment', 'ink']);
 
 const FAMILY = {
   Helvetica: 'Helvetica, Arial, sans-serif',
@@ -182,12 +183,13 @@ function renderNoteList() {
     for (const stamp of page.stamps) {
       if (!NOTE_TYPES.has(stamp.type) || seen.has(stamp.group)) continue;
       seen.add(stamp.group);
+      const kindLabel = { note: 'on the page', comment: 'sticky note', ink: 'drawn in the viewer' }[stamp.type];
       rows.push(el('div', { class: 'row' },
         el('span', { class: 'swatch', style: `background:${stamp.type === 'note' ? (stamp.bg ?? stamp.color) : stamp.color}` }),
         el('div', { class: 'grow' },
-          el('div', { text: stamp.text.split('\n')[0] }),
-          el('div', { class: 'sub', text: `Page ${i + 1} · ${stamp.type === 'note' ? 'on the page' : 'sticky note'}` })),
-        el('button', { title: 'Remove', 'aria-label': 'Remove note', html: TRASH, onclick: () => removeStampGroup(stamp.group) })));
+          el('div', { text: stamp.type === 'ink' ? 'Drawing' : stamp.text.split('\n')[0] }),
+          el('div', { class: 'sub', text: `Page ${i + 1} · ${kindLabel}` })),
+        el('button', { title: 'Remove', 'aria-label': stamp.type === 'ink' ? 'Remove drawing' : 'Remove note', html: TRASH, onclick: () => removeStampGroup(stamp.group) })));
     }
   });
   if (!rows.length) return;

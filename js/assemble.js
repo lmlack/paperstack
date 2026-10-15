@@ -5,7 +5,11 @@
 // they *see*, so stamps are stored in "display space" (origin bottom-left of the
 // rotated page, fractions of its width/height) and mapped back here.
 
-import { PDFDocument, PDFHexString, PDFString, StandardFonts, degrees, rgb } from '../vendor/pdf-lib.esm.min.js';
+import {
+  PDFDocument, PDFHexString, PDFString, StandardFonts, degrees, rgb,
+  LineCapStyle, LineJoinStyle, pushGraphicsState, popGraphicsState, setLineWidth,
+  setLineCap, setLineJoin, setStrokingRgbColor, moveTo, lineTo, stroke,
+} from '../vendor/pdf-lib.esm.min.js';
 import { state, srcOf } from './state.js';
 import { hexToRgb01 } from './lib/dom.js';
 import { norm, visualSize, anchorStamp, toPageSpace } from './lib/geometry.js';
@@ -70,10 +74,10 @@ export async function assemble(pages, onProgress) {
     page.setRotation(degrees(rot));
 
     if (record.stamps.length) {
-      const { width: W, height: H } = page.getSize();
+      const box = { ...visibleBox(page), rot };
       for (const stamp of record.stamps) {
-        if (stamp.type === 'comment') addComment(out, page, stamp, { W, H, rot });
-        else await drawStamp(page, stamp, { W, H, rot }, { font, image });
+        if (stamp.type === 'comment') addComment(out, page, stamp, box);
+        else await drawStamp(page, stamp, box, { font, image });
       }
     }
     onProgress?.(i + 1, pages.length);
@@ -82,9 +86,30 @@ export async function assemble(pages, onProgress) {
   return out.save({ useObjectStreams: true });
 }
 
+/**
+ * The part of the page a viewer shows, which is what stamps are placed on: the
+ * CropBox clipped to the MediaBox, as PDF.js draws it. Its corner is often not
+ * (0, 0), and ignoring that shifted every stamp left and down on export.
+ */
+export function visibleBox(page) {
+  const media = page.getMediaBox();
+  const crop = page.getCropBox();
+  const x0 = Math.max(media.x, crop.x);
+  const y0 = Math.max(media.y, crop.y);
+  const x1 = Math.min(media.x + media.width, crop.x + crop.width);
+  const y1 = Math.min(media.y + media.height, crop.y + crop.height);
+  // A broken CropBox that misses the MediaBox: viewers fall back to the MediaBox.
+  if (x1 <= x0 || y1 <= y0) return { x0: media.x, y0: media.y, W: media.width, H: media.height };
+  return { x0, y0, W: x1 - x0, H: y1 - y0 };
+}
+
 async function drawStamp(page, stamp, box, resolve) {
   if (stamp.type === 'note') {
     await drawNote(page, stamp, box, await resolve.font(stamp.font));
+    return;
+  }
+  if (stamp.type === 'ink') {
+    drawInk(page, stamp, box);
     return;
   }
   if (stamp.type === 'text') {
@@ -146,6 +171,33 @@ async function drawNote(page, stamp, box, font) {
   });
 }
 
+/**
+ * A freehand line drawn in the viewer, written as a vector path so it stays
+ * sharp at any zoom. Its points are display-space fractions like every other
+ * stamp, mapped one by one into the page's own coordinates.
+ */
+function drawInk(page, stamp, box) {
+  const { vw, vh } = visualSize(box.W, box.H, box.rot);
+  const pts = stamp.points.map(([u, v]) => {
+    const p = toPageSpace(u * vw, v * vh, box.W, box.H, box.rot);
+    return [p.x + (box.x0 ?? 0), p.y + (box.y0 ?? 0)];
+  });
+  // A tap is a single point; a zero-length round-capped line draws it as a dot.
+  if (pts.length === 1) pts.push(pts[0]);
+  const { r, g, b } = hexToRgb01(stamp.color);
+  page.pushOperators(
+    pushGraphicsState(),
+    setStrokingRgbColor(r, g, b),
+    setLineWidth(stamp.width),
+    setLineCap(LineCapStyle.Round),
+    setLineJoin(LineJoinStyle.Round),
+    moveTo(...pts[0]),
+    ...pts.slice(1).map((p) => lineTo(...p)),
+    stroke(),
+    popGraphicsState(),
+  );
+}
+
 const COMMENT_PT = 20;   // the icon's box; viewers draw their own icon in it
 
 /**
@@ -160,8 +212,8 @@ export function addComment(doc, page, stamp, box) {
   const half = COMMENT_PT / 2;
   const corners = [[cx - half, cy - half], [cx + half, cy + half]]
     .map(([x, y]) => toPageSpace(x, y, box.W, box.H, box.rot));
-  const xs = corners.map((c) => c.x);
-  const ys = corners.map((c) => c.y);
+  const xs = corners.map((c) => c.x + (box.x0 ?? 0));
+  const ys = corners.map((c) => c.y + (box.y0 ?? 0));
   const { r, g, b } = hexToRgb01(stamp.color);
 
   const annot = doc.context.obj({
