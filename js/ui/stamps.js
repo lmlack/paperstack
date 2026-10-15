@@ -36,6 +36,7 @@ export function paintStamps(layer, page, pageWidthPt) {
 
   const widthPt = pageWidthPt || 612;
   for (const stamp of page.stamps) {
+    if (stamp.type === 'ink') { layer.append(inkNode(stamp, widthPt)); continue; }
     const node = el('div', { class: 'st' });
     node.style.left = `${stamp.u * 100}%`;
     node.style.top = `${(1 - stamp.v) * 100}%`;
@@ -76,6 +77,27 @@ export function paintStamps(layer, page, pageWidthPt) {
     }
     layer.append(node);
   }
+}
+
+const SVG = 'http://www.w3.org/2000/svg';
+
+/**
+ * A drawn line, stretched over the whole page. The path is in page fractions,
+ * so the SVG is squashed to the page's shape; non-scaling-stroke keeps the pen
+ * round anyway, with its width in cqw like everything else here.
+ */
+export function inkNode(stamp, pageWidthPt) {
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('class', 'ink');
+  svg.setAttribute('viewBox', '0 0 1 1');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  const path = document.createElementNS(SVG, 'path');
+  const pts = stamp.points.length === 1 ? [stamp.points[0], stamp.points[0]] : stamp.points;
+  path.setAttribute('d', pts.map(([u, v], i) => `${i ? 'L' : 'M'}${u} ${1 - v}`).join(''));
+  path.style.stroke = stamp.color;
+  path.style.strokeWidth = `${(stamp.width / (pageWidthPt || 612)) * 100}cqw`;
+  svg.append(path);
+  return svg;
 }
 
 /** Convenience for a tile or sheet that holds a `.stamps` layer. */

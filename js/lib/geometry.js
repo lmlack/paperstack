@@ -5,6 +5,10 @@
 // clockwise at display time. Users place stamps on what they see, so stamps are
 // stored in "display space": origin at the bottom-left of the *rotated* page,
 // y pointing up, coordinates as fractions of the rotated page's width/height.
+//
+// The visible box need not start at (0, 0): scans and print files often have a
+// MediaBox with an offset origin, or a CropBox inset from it. `x0, y0` is the
+// visible box's lower-left corner in the page's own coordinates.
 
 export const norm = (deg) => ((Math.round(deg) % 360) + 360) % 360;
 
@@ -48,7 +52,7 @@ export function toDisplaySpace(x, y, W, H, rot) {
  *
  * @returns {{x:number, y:number, angle:number}} in unrotated page coordinates
  */
-export function anchorStamp({ u, v, rot: stampRot }, { W, H, rot }, width, height) {
+export function anchorStamp({ u, v, rot: stampRot }, { W, H, rot, x0 = 0, y0 = 0 }, width, height) {
   const { vw, vh } = visualSize(W, H, rot);
   const angle = stampRot + norm(rot);
   const rad = (angle * Math.PI) / 180;
@@ -56,8 +60,8 @@ export function anchorStamp({ u, v, rot: stampRot }, { W, H, rot }, width, heigh
   const sin = Math.sin(rad);
   const center = toPageSpace(u * vw, v * vh, W, H, rot);
   return {
-    x: center.x + (-width / 2) * cos - (-height / 2) * sin,
-    y: center.y + (-width / 2) * sin + (-height / 2) * cos,
+    x: x0 + center.x + (-width / 2) * cos - (-height / 2) * sin,
+    y: y0 + center.y + (-width / 2) * sin + (-height / 2) * cos,
     angle,
   };
 }

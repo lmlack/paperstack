@@ -1,12 +1,14 @@
 // Full-size page viewer: one page at a time, rendered at the zoom you ask for,
-// with the queued stamps drawn on top so you see what you will export.
+// with the queued stamps drawn on top so you see what you will export. You can
+// also draw and type on the page here (see markup.js), and undo either.
 
 import { $, el } from '../lib/dom.js';
 import { renderPage } from '../pdfjs.js';
 import { displayInfo } from '../assemble.js';
-import { state, on, srcOf, rotatePages, deletePages } from '../state.js';
+import { state, on, srcOf, rotatePages, deletePages, undoOnPage } from '../state.js';
 import { paintStamps } from './stamps.js';
 import { toast } from './feedback.js';
+import { initMarkup, setMode, markupMode, finishText } from './markup.js';
 
 const ZOOM_STEPS = [0.25, 0.4, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 const MAX_CANVAS_EDGE = 5000;   // keeps a 400% zoom on A0 from exhausting memory
@@ -20,6 +22,10 @@ const stamps = $('#viewerStamps');
 let currentUid = null;
 let mode = 'fit';      // 'fit' | 'width' | a number
 let renderToken = 0;
+let shown = null;      // what the canvas holds: { key, page, wPt, hPt, scale }
+
+// Anything that changes the rendered page itself, as opposed to its stamps.
+const renderKey = (page) => `${page.uid}|${page.srcId}|${page.index}|${page.rot}`;
 
 const HISTORY_KEY = 'paperstackViewer';
 const isOpen = () => !viewer.hidden;
@@ -34,6 +40,8 @@ export function initViewer() {
   $('#viewFit').onclick = () => { mode = mode === 'fit' ? 'width' : 'fit'; draw(); };
   $('#viewRotL').onclick = () => withPage((page) => rotatePages([page], -90));
   $('#viewRotR').onclick = () => withPage((page) => rotatePages([page], 90));
+  $('#viewUndo').onclick = undo;
+  initMarkup(() => (shown && shown.page === state.pages[indexOf()] ? shown : null));
   $('#viewDelete').onclick = () => withPage((page) => {
     if (state.pages.length === 1) {
       toast('That would delete the last page.', 'err');
@@ -60,11 +68,31 @@ export function initViewer() {
   });
 
   // Rotation, deletion or a re-order elsewhere should be reflected here too.
+  // A new or removed mark only needs the stamps repainted, which keeps drawing
+  // from re-rendering the page under the pen after every stroke.
   on('pages', () => {
     if (!isOpen()) return;
-    if (indexOf() < 0) { closeViewer(); return; }
+    const page = state.pages[indexOf()];
+    if (!page) { closeViewer(); return; }
+    if (shown && shown.key === renderKey(page) && !viewer.classList.contains('busy')) {
+      paintStamps(stamps, page, shown.wPt);
+      $('#viewCount').textContent = `Page ${indexOf() + 1} of ${state.pages.length}`;
+      $('#viewPrev').disabled = indexOf() === 0;
+      $('#viewNext').disabled = indexOf() === state.pages.length - 1;
+      refreshUndo();
+      return;
+    }
     draw();
   });
+}
+
+function undo() {
+  finishText(false);
+  withPage((page) => undoOnPage(page));
+}
+
+function refreshUndo() {
+  $('#viewUndo').disabled = !state.pages[indexOf()]?.stamps.length;
 }
 
 function withPage(fn) {
@@ -84,11 +112,14 @@ export function openViewer(uid) {
 
 export function closeViewer() {
   if (!isOpen()) return;
+  finishText();
+  setMode(null);
   viewer.hidden = true;
   // Closed by the button, Esc or a deletion: take back the entry we added.
   // Closed by going back: it is already gone.
   if (history.state?.[HISTORY_KEY]) history.back();
   currentUid = null;
+  shown = null;
   renderToken++;                       // abandon any render still in flight
   canvas.width = canvas.height = 0;
   stamps.textContent = '';
@@ -97,6 +128,7 @@ export function closeViewer() {
 function step(delta) {
   const next = indexOf() + delta;
   if (next < 0 || next >= state.pages.length) return;
+  finishText();
   currentUid = state.pages[next].uid;
   draw();
 }
@@ -116,8 +148,18 @@ function onKey(e) {
   if (!isOpen()) return;
   if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
 
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    undo();
+    return;
+  }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+
   const keys = {
-    Escape: closeViewer,
+    // Esc leaves Draw or Text first, and only then closes.
+    Escape: () => (markupMode() ? setMode(null) : closeViewer()),
+    d: () => setMode(markupMode() === 'draw' ? null : 'draw'),
+    t: () => setMode(markupMode() === 'type' ? null : 'type'),
     ArrowRight: () => step(1),
     ArrowLeft: () => step(-1),
     PageDown: () => step(1),
@@ -143,7 +185,9 @@ async function draw() {
   const page = state.pages[index];
   if (!page) return;
 
+  finishText();
   const token = ++renderToken;
+  shown = null;
   viewer.classList.add('busy');
 
   $('#viewCount').textContent = `Page ${index + 1} of ${state.pages.length}`;
@@ -174,6 +218,8 @@ async function draw() {
     sheet.style.height = `${Math.round(hPt * scale)}px`;
 
     paintStamps(stamps, page, wPt);
+    shown = { key: renderKey(page), page, wPt, hPt, scale };
+    refreshUndo();
     $('#viewZoom').textContent = `${Math.round(scale * 100)}%`;
     $('#viewFit').textContent = mode === 'width' ? 'Fit page' : 'Fit width';
     $('#viewZoomIn').disabled = scale >= ZOOM_STEPS.at(-1) - 1e-6;

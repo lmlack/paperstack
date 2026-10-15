@@ -36,6 +36,15 @@ signatures you have queued drawn on top, so you see what you are about to
 export. Arrow keys page through it, `+` and `-` zoom, `0` fits, `[` and `]`
 rotate, `Esc` closes.
 
+You can mark the page right there, too. **Draw** (`D`) puts down freehand
+lines, exported as vector paths so they stay sharp. **Text** (`T`) lets you
+click anywhere and type; Enter places it, Shift+Enter adds a line. Pick a color
+and a pen or text size from the strip that appears. **Undo** (`Ctrl/Cmd+Z`)
+takes back the latest mark on the page you are looking at, whichever tool made
+it. It is a labeled pill with a straight arrow, so it is never mistaken for
+the curved rotate buttons. Drawings and typed text also appear under Notes,
+where any one of them can be removed later.
+
 | Tool | |
 |---|---|
 | **Organize** | Merge several PDFs, drag pages into any order, rotate, duplicate, delete, reverse. Drop images in to add them as pages. |

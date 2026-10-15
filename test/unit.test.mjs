@@ -134,6 +134,17 @@ test('anchorStamp puts the stamp center exactly where it was asked to go', () =>
   }
 });
 
+test('anchorStamp measures from the visible box, not from (0, 0)', () => {
+  // A page whose box starts at (40, 30), as scans and print files often do.
+  const box = { W: 612, H: 792, x0: 40, y0: 30 };
+  for (const rot of [0, 90, 180, 270]) {
+    const anchor = anchorStamp({ u: 0.5, v: 0.5, rot: 0 }, { ...box, rot }, 200, 40);
+    const center = centerFromAnchor(anchor, 200, 40);
+    assert.ok(Math.abs(center.x - (40 + 306)) < 1e-9, `center x at ${rot}°`);
+    assert.ok(Math.abs(center.y - (30 + 396)) < 1e-9, `center y at ${rot}°`);
+  }
+});
+
 test('anchorStamp cancels the page rotation out of the draw angle', () => {
   const box = { W: 612, H: 792, rot: 90 };
   // Asking for 45° on a page displayed 90° clockwise must be drawn at 135°,
