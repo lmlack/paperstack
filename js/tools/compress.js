@@ -16,9 +16,9 @@ const PRESETS = {
 };
 
 const HINTS = {
-  lossless: 'Rewrites the file structure and drops objects nothing points at. Text stays sharp and selectable. '
-    + 'Pays off on files that have been edited and re-saved many times; a freshly-made PDF may not shrink at all.',
-  raster: 'Re-draws each page as a JPEG. Enormous savings on scans and image-heavy files, at the cost of selectable text.',
+  lossless: 'Rewrites the file structure and drops objects nothing points at. Text stays selectable. '
+    + 'Helps most on files that have been edited and re-saved many times. A new PDF may not shrink at all.',
+  raster: 'Redraws each page as a JPEG. Works best on scans and image-heavy files.',
 };
 
 let mode = 'lossless';
@@ -93,9 +93,9 @@ function showAlreadyOptimal(before) {
   host.textContent = '';
   host.append(
     el('span', { class: 'big', style: 'color:var(--ink)', text: 'Already as small as it gets' }),
-    el('span', { class: 'cmp', text: `${fmtBytes(before)}, and a rewrite only makes it bigger` }),
+    el('span', { class: 'cmp', style: 'font-family:inherit', text: `${fmtBytes(before)}. Rewriting it would make it larger.` }),
     el('p', { class: 'hint',
-      text: 'Nothing in this file is wasted, so the original is the best lossless version. '
+      text: 'There is nothing to remove from this file, so the original is already the smallest lossless version. '
         + 'If you need it smaller, switch to “Shrink hard”.' }),
     el('button', {
       class: 'btn block',
@@ -157,13 +157,13 @@ function showResult(before, bytes) {
     el('span', {
       class: 'big',
       style: saved > 0 ? '' : 'color:var(--ink)',
-      text: saved > 0 ? `${pct}% smaller` : 'No size win',
+      text: saved > 0 ? `${pct}% smaller` : 'Not any smaller',
     }),
     el('span', { class: 'cmp', text: `${fmtBytes(before)} → ${fmtBytes(after)}` }),
   );
   if (saved <= 0) {
     host.append(el('p', { class: 'hint',
-      text: 'This file is already tightly packed. Try "Shrink hard" if the pages are scans or photos.' }));
+      text: 'This file is already compact. Try “Shrink hard” if the pages are scans or photos.' }));
   }
 
   const name = `${safeName(state.outName)}-compressed.pdf`;

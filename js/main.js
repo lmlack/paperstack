@@ -116,7 +116,7 @@ $('#btnReset').onclick = () => {
   const n = state.pages.length;
   if (!confirm(`Close every file and start over?\n\n${n} page${n === 1 ? '' : 's'} and any watermarks or signatures you have queued will be discarded. Export first if you want to keep them.`)) return;
   reset();
-  toast('Cleared. Drop a new PDF whenever you like.');
+  toast('Cleared. Drop in a PDF to start again.');
 };
 
 /* ───────────────────────── export ───────────────────────── */

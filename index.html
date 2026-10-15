@@ -23,7 +23,6 @@
 
 <header class="topbar">
   <a class="backlink" href="https://gwark.dev/#projects" title="Back to gwark.dev">
-    <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
     <svg viewBox="0 0 100 100" class="gwark-mark" aria-hidden="true"><defs><mask id="gmf" maskUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="140"><rect x="-20" y="-20" width="140" height="140" fill="#fff"/><path d="M96.3 21.53A52.58 14.77 -28.3 0 1 3.7 71.38" fill="none" stroke="#000" stroke-width="6.91"/><circle cx="60.83" cy="57.34" r="8.11"/></mask><mask id="gmb" maskUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="140"><rect x="-20" y="-20" width="140" height="140" fill="#fff"/><path d="M43.14 16.6L44.77 9.94L53.9 9.94L55.53 16.6L60.68 17.98L65.41 13.02L73.32 17.59L71.4 24.17L75.17 27.94L81.75 26.02L86.31 33.92L81.36 38.66L82.74 43.81L89.4 45.44L89.4 54.56L82.74 56.19L81.36 61.34L86.31 66.08L81.75 73.98L75.17 72.06L71.4 75.83L73.32 82.41L65.41 86.98L60.68 82.02L55.53 83.4L53.9 90.06L44.77 90.06L43.14 83.4L38 82.02L33.26 86.98L25.35 82.41L27.27 75.83L23.5 72.06L16.92 73.98L12.36 66.08L17.31 61.34L15.93 56.19L9.27 54.56L9.27 45.44L15.93 43.81L17.31 38.66L12.36 33.92L16.92 26.02L23.5 27.94L27.27 24.17L25.35 17.59L33.26 13.02L38 17.98Z" stroke="#000" stroke-width="6.91" stroke-linejoin="round"/></mask><mask id="gmn" maskUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="140"><rect x="-20" y="-20" width="140" height="140" fill="#fff"/><circle cx="39.9" cy="39.78" r="5.46"/><circle cx="60.83" cy="57.34" r="4.65"/><circle cx="89.82" cy="18.42" r="3.32"/></mask></defs><g fill="none" stroke="currentColor" stroke-width="4.06" stroke-linecap="round" stroke-linejoin="round"><g mask="url(#gmf)"><path d="M43.14 16.6L44.77 9.94L53.9 9.94L55.53 16.6L60.68 17.98L65.41 13.02L73.32 17.59L71.4 24.17L75.17 27.94L81.75 26.02L86.31 33.92L81.36 38.66L82.74 43.81L89.4 45.44L89.4 54.56L82.74 56.19L81.36 61.34L86.31 66.08L81.75 73.98L75.17 72.06L71.4 75.83L73.32 82.41L65.41 86.98L60.68 82.02L55.53 83.4L53.9 90.06L44.77 90.06L43.14 83.4L38 82.02L33.26 86.98L25.35 82.41L27.27 75.83L23.5 72.06L16.92 73.98L12.36 66.08L17.31 61.34L15.93 56.19L9.27 54.56L9.27 45.44L15.93 43.81L17.31 38.66L12.36 33.92L16.92 26.02L23.5 27.94L27.27 24.17L25.35 17.59L33.26 13.02L38 17.98Z"/><circle cx="49.78" cy="49.7" r="24.08"/><path mask="url(#gmn)" d="M25.88 46.77L61.82 28.85"/><circle cx="39.9" cy="39.78" r="5.46"/></g><g mask="url(#gmb)"><path mask="url(#gmn)" d="M3.7 71.38A52.58 14.77 -28.3 0 1 96.3 21.53"/></g><circle cx="89.82" cy="18.42" r="3.32"/><path mask="url(#gmn)" d="M96.3 21.53A52.58 14.77 -28.3 0 1 3.7 71.38"/><circle cx="60.83" cy="57.34" r="4.65"/></g></svg>
     <!-- gwark.dev's mark, traced from its master logo artwork (gwark_logo.jpg there). -->
     <span>gwark.dev</span>
@@ -78,7 +77,7 @@
       <h2>Drop your PDFs here</h2>
       <p>or <label for="fileInput" class="linkish">browse your computer</label></p>
       <div class="dz-badges">
-        <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M12 3 4 6v6c0 5 3.4 8.1 8 9 4.6-.9 8-4 8-9V6l-8-3Z"/><path d="m9 12.5 2.2 2.2L15.5 10"/></svg>No uploads, ever</span>
+        <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M12 3 4 6v6c0 5 3.4 8.1 8 9 4.6-.9 8-4 8-9V6l-8-3Z"/><path d="m9 12.5 2.2 2.2L15.5 10"/></svg>Files stay on your device</span>
         <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M5 12h14M12 5v14"/></svg>No page limits</span>
         <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/></svg>Works offline</span>
       </div>
@@ -151,7 +150,7 @@
           <button class="active" data-v="lossless">Optimize</button>
           <button data-v="raster">Shrink hard</button>
         </div>
-        <p class="hint" id="cmpModeHint">Rewrites the file structure and drops objects that nothing points at. Text stays sharp and selectable.</p>
+        <p class="hint" id="cmpModeHint">Rewrites the file structure and drops objects nothing points at. Text stays selectable. Helps most on files that have been edited and re-saved many times. A new PDF may not shrink at all.</p>
 
         <div id="cmpRasterOpts" hidden>
           <label class="lbl">Preset</label>
@@ -391,7 +390,7 @@
         </div>
 
         <button class="btn primary block" id="btnSplit">Split</button>
-        <p class="hint">Several files come back as a .zip, built right here in the browser.</p>
+        <p class="hint">More than one file downloads as a .zip.</p>
       </div>
 
     </div>
