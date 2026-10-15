@@ -22,7 +22,7 @@ const FAMILY = {
 };
 
 const HINTS = {
-  note: 'Written onto the page. Everyone sees it, in any app, and it prints.',
+  note: 'Written onto the page, so it shows in every PDF app and prints.',
   comment: 'A note icon that opens when clicked in Preview, Acrobat and most PDF apps. It stays editable there and does not print.',
 };
 
