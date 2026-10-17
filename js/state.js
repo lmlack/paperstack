@@ -61,21 +61,32 @@ async function registerSource(name, bytes) {
   return src;
 }
 
-/** Appends every page of a PDF file to the end of the workspace. */
-export async function addPdf(file) {
+/** Puts pages into the workspace at `at`, or at the end. */
+function insertPages(pages, at) {
+  const where = at == null ? state.pages.length : Math.max(0, Math.min(state.pages.length, at));
+  state.pages.splice(where, 0, ...pages);
+}
+
+/**
+ * Adds every page of a PDF file, at page position `at` (0-based) or at the
+ * end. Returns the number of pages added.
+ */
+export async function addPdf(file, at = null) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const src = await registerSource(file.name, bytes);
-  for (let i = 0; i < src.pageCount; i++) state.pages.push(makePage(src.id, i));
+  record(`Add ${file.name}`);
+  const pages = Array.from({ length: src.pageCount }, (_, i) => makePage(src.id, i));
+  insertPages(pages, at);
   if (!state.outName) state.outName = file.name;
   emit('sources', 'pages');
-  return src;
+  return pages.length;
 }
 
 /**
  * Images become a one-page PDF before they enter the workspace, so from that
  * point on every page in the app is simply "a page of some source PDF".
  */
-export async function addImageAsPage(file) {
+export async function addImageAsPage(file, at = null) {
   const { bytes, mime } = await normalizeImage(file);
   const doc = await PDFDocument.create();
   const image = mime === 'image/png' ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
@@ -83,8 +94,46 @@ export async function addImageAsPage(file) {
   page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
   const pdfBytes = await doc.save();
   const src = await registerSource(file.name, pdfBytes);
-  state.pages.push(makePage(src.id, 0));
+  record(`Add ${file.name}`);
+  insertPages([makePage(src.id, 0)], at);
+  if (!state.outName) state.outName = file.name.replace(/\.\w+$/, '');
   emit('sources', 'pages');
+  return 1;
+}
+
+export const PAPER = {
+  letter: { name: 'Letter', w: 612, h: 792 },
+  a4: { name: 'A4', w: 595.28, h: 841.89 },
+};
+
+// One small source per blank page size, shared by every blank page of that
+// size, the way a duplicated page shares its source.
+const blanks = new Map();   // `${w}x${h}` -> srcId
+
+async function blankSource(w, h) {
+  const key = `${Math.round(w)}x${Math.round(h)}`;
+  const known = blanks.get(key);
+  if (known && state.sources.has(known)) return known;
+  const doc = await PDFDocument.create();
+  doc.addPage([w, h]);
+  const paper = Object.values(PAPER).find((p) => `${Math.round(p.w)}x${Math.round(p.h)}` === key);
+  const src = await registerSource(`Blank ${paper ? paper.name : 'page'}`, await doc.save());
+  blanks.set(key, src.id);
+  return src.id;
+}
+
+/**
+ * Adds a blank page of `w` by `h` points at position `at` (or the end).
+ * Returns the new page, so it can be opened straight away.
+ */
+export async function addBlankPage({ w, h }, at = null) {
+  const srcId = await blankSource(w, h);
+  record('Add a blank page');
+  const page = makePage(srcId, 0);
+  insertPages([page], at);
+  if (!state.outName) state.outName = 'Untitled';
+  emit('sources', 'pages');
+  return page;
 }
 
 const makePage = (srcId, index) => ({ uid: uid('pg'), srcId, index, rot: 0, stamps: [] });
@@ -154,19 +203,23 @@ export function targetPages() {
 }
 
 export function rotatePages(pages, delta) {
+  record(pages.length === 1 ? `Rotate page ${numberOf(pages[0])}` : `Rotate ${pages.length} pages`);
   for (const p of pages) p.rot = (((p.rot + delta) % 360) + 360) % 360;
   emit('pages');
 }
 
 export function deletePages(pages) {
+  record(pages.length === 1 ? `Delete page ${numberOf(pages[0])}` : `Delete ${pages.length} pages`);
   const doomed = new Set(pages.map((p) => p.uid));
   state.pages = state.pages.filter((p) => !doomed.has(p.uid));
   for (const u of doomed) state.sel.delete(u);
-  pruneSources();
+  // Sources stay open even with no pages left, so undo can bring them back.
+  // They are released by Start over.
   emit('pages', 'sel', 'sources');
 }
 
 export function duplicatePages(pages) {
+  record(pages.length === 1 ? `Duplicate page ${numberOf(pages[0])}` : `Duplicate ${pages.length} pages`);
   const doomed = new Set(pages.map((p) => p.uid));
   const out = [];
   for (const p of state.pages) {
@@ -181,6 +234,7 @@ export function duplicatePages(pages) {
 
 /** Moves the given pages so they sit immediately before index `at`. */
 export function movePages(pages, at) {
+  record(pages.length === 1 ? 'Move a page' : `Move ${pages.length} pages`);
   const moving = new Set(pages.map((p) => p.uid));
   const anchor = state.pages[at] ?? null;
   const rest = state.pages.filter((p) => !moving.has(p.uid));
@@ -201,18 +255,39 @@ function clampToNeighbor(rest, all, at, moving) {
   return rest.length;
 }
 
+/**
+ * Moves pages so the first of them ends up at `position` (0-based) in the
+ * finished order: "move to page 3" means it is page 3 afterwards. The pages
+ * keep their order among themselves.
+ */
+export function movePagesTo(pages, position) {
+  const moving = new Set(pages.map((p) => p.uid));
+  const block = state.pages.filter((p) => moving.has(p.uid));
+  const rest = state.pages.filter((p) => !moving.has(p.uid));
+  const at = Math.max(0, Math.min(rest.length, position));
+  if (state.pages.slice(at, at + block.length).every((p, i) => p === block[i])) return false;   // already there
+  record(block.length === 1 ? `Move page ${numberOf(block[0])}` : `Move ${block.length} pages`);
+  rest.splice(at, 0, ...block);
+  state.pages = rest;
+  emit('pages');
+  return true;
+}
+
 export function reorder(uids) {
+  record('Reorder pages');
   const index = new Map(state.pages.map((p) => [p.uid, p]));
   state.pages = uids.map((u) => index.get(u)).filter(Boolean);
   emit('pages');
 }
 
 export function reversePages() {
+  record('Reverse page order');
   state.pages.reverse();
   emit('pages');
 }
 
 export function moveToEnd(pages, where) {
+  record(`Move to ${where}`);
   const moving = new Set(pages.map((p) => p.uid));
   const block = state.pages.filter((p) => moving.has(p.uid));
   const rest = state.pages.filter((p) => !moving.has(p.uid));
@@ -232,6 +307,7 @@ export async function replaceWith(name, bytes) {
   const src = await registerSource(name, bytes);
   for (let i = 0; i < src.pageCount; i++) state.pages.push(makePage(src.id, i));
   state.outName = name;
+  clearHistory();
   emit('sources', 'pages', 'sel');
 }
 
@@ -246,19 +322,18 @@ export function reset() {
   state.pages = [];
   state.sel.clear();
   state.outName = '';
+  clearHistory();
   emit('sources', 'pages', 'sel');
 }
 
-/** Drops sources that no longer back any page, freeing their worker and thumbnails. */
-function pruneSources() {
-  const live = new Set(state.pages.map((p) => p.srcId));
-  for (const [id, src] of state.sources) {
-    if (live.has(id)) continue;
-    forgetThumbnails(id);
-    void closeDocument(src.pdfjs);
-    state.sources.delete(id);
-  }
+/** The open files that still back at least one page, in the order they were added. */
+export function liveSources() {
+  const used = new Set(state.pages.map((p) => p.srcId));
+  return [...state.sources.values()].filter((src) => used.has(src.id));
 }
+
+/** A page's 1-based position, for messages. */
+export const numberOf = (page) => state.pages.indexOf(page) + 1;
 
 /* ───────────────────────── selection ───────────────────────── */
 
@@ -290,27 +365,39 @@ export function selectRangeTo(u, anchorUid) {
 
 /* ───────────────────────── stamps ───────────────────────── */
 
-// Every addStamps call gets the next number, shared by all the stamps it adds,
-// so undo can take back the latest change to a page as one step even when it
-// was a tiled watermark of dozens of marks.
-let addedSeq = 0;
+/** Queues marks onto pages. Returns the copies placed on the first page. */
+export function addStamps(pages, stamps, label = 'Add a mark') {
+  record(label);
+  let first = [];
+  for (const p of pages) {
+    const placed = stamps.map((s) => ({ ...s, id: uid('st') }));
+    p.stamps.push(...placed);
+    if (p === pages[0]) first = placed;
+  }
+  emit('pages');
+  return first;
+}
 
-export function addStamps(pages, stamps) {
-  const at = ++addedSeq;
-  for (const p of pages) p.stamps.push(...stamps.map((s) => ({ ...s, id: uid('st'), at })));
+export const stampById = (page, id) => page?.stamps.find((s) => s.id === id);
+
+/** Changes one mark in place, e.g. after it is dragged. */
+export function updateStamp(page, id, patch, label = 'Move a mark') {
+  const stamp = stampById(page, id);
+  if (!stamp) return;
+  record(label);
+  Object.assign(stamp, patch);
   emit('pages');
 }
 
-/** Removes the most recent change made to one page. Returns false if there was none. */
-export function undoOnPage(page) {
-  if (!page?.stamps.length) return false;
-  const latest = Math.max(...page.stamps.map((s) => s.at ?? 0));
-  page.stamps = page.stamps.filter((s) => (s.at ?? 0) !== latest);
+export function removeStamp(page, id) {
+  if (!stampById(page, id)) return;
+  record('Delete a mark');
+  page.stamps = page.stamps.filter((s) => s.id !== id);
   emit('pages');
-  return true;
 }
 
 export function removeStampGroup(group) {
+  record('Remove a mark');
   for (const p of state.pages) p.stamps = p.stamps.filter((s) => s.group !== group);
   emit('pages');
 }
@@ -320,11 +407,68 @@ export function stampGroups() {
   const groups = new Map();
   for (const p of state.pages) {
     for (const s of p.stamps) {
-      if (!groups.has(s.group)) groups.set(s.group, { group: s.group, stamp: s, pages: new Set() });
+      if (!groups.has(s.group)) groups.set(s.group, { group: s.group, stamp: s, pages: new Set(), first: p });
       groups.get(s.group).pages.add(p.uid);
     }
   }
   return [...groups.values()].map((g) => ({ ...g, count: g.pages.size }));
 }
 
-export const totalBytes = () => [...state.sources.values()].reduce((n, s) => n + s.size, 0);
+/* ───────────────────────── undo and redo ───────────────────────── */
+
+// Every edit records a snapshot of the page list first: pages are small
+// records and stamps are flat objects, so a copy is cheap, and one history
+// covers everything from a deleted page to a dragged signature. The PDFs
+// themselves are never copied; sources stay open until Start over.
+
+const HISTORY_LIMIT = 150;
+const undoStack = [];
+const redoStack = [];
+
+const capture = () => ({
+  pages: state.pages.map((p) => ({ ...p, stamps: p.stamps.map((s) => ({ ...s })) })),
+  sel: [...state.sel],
+});
+
+/** Call before changing the workspace; `label` names the change for the undo toast. */
+export function record(label) {
+  undoStack.push({ label, ...capture() });
+  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+  redoStack.length = 0;
+  emit('history');
+}
+
+function restore(snap) {
+  state.pages = snap.pages;
+  const live = new Set(state.pages.map((p) => p.uid));
+  state.sel = new Set(snap.sel.filter((u) => live.has(u)));
+  emit('sources', 'pages', 'sel', 'history');
+}
+
+/** Steps back one change. Returns its label, or null if there was nothing to undo. */
+export function undo() {
+  const snap = undoStack.pop();
+  if (!snap) return null;
+  redoStack.push({ label: snap.label, ...capture() });
+  restore(snap);
+  return snap.label;
+}
+
+export function redo() {
+  const snap = redoStack.pop();
+  if (!snap) return null;
+  undoStack.push({ label: snap.label, ...capture() });
+  restore(snap);
+  return snap.label;
+}
+
+export const canUndo = () => undoStack.length > 0;
+export const canRedo = () => redoStack.length > 0;
+
+function clearHistory() {
+  undoStack.length = 0;
+  redoStack.length = 0;
+  emit('history');
+}
+
+export const totalBytes = () => liveSources().reduce((n, s) => n + s.size, 0);

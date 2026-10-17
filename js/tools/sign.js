@@ -1,15 +1,20 @@
 // Signatures: draw with a pointer, type one in a script face, or upload a photo
-// of a real one. The result is trimmed to its ink, then dragged into place on a
-// full-size render of the chosen page.
+// of a real one, in a dialog. Each one made is kept for the session, so it can
+// go on any number of pages: pick it in the Sign panel or from the Sign button
+// in the page editor. It lands on the page selected and ready to drag.
 
-import { $, el, bindRange, segment } from '../lib/dom.js';
-import { state, on, addAsset, addCanvasAsset, addStamps } from '../state.js';
+import { $, el, bindRange, segment, uid } from '../lib/dom.js';
+import { state, on, addAsset, addCanvasAsset, addStamps, removeStampGroup, numberOf } from '../state.js';
+import { displayInfo } from '../assemble.js';
 import { toast } from '../ui/feedback.js';
-import { place } from '../ui/place.js';
+import { openViewer, currentPage, visibleCenter } from '../ui/viewer.js';
 
 let mode = 'draw';
 let uploaded = null;        // asset from the Upload tab
 let pad;                    // signature pad controller
+let signatures = [];        // assets made this session, newest last
+
+const TRASH = '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>';
 
 export function initSign() {
   pad = createPad($('#sigPad'));
@@ -24,6 +29,7 @@ export function initSign() {
     $('#sgDraw').hidden = v !== 'draw';
     $('#sgType').hidden = v !== 'type';
     $('#sgUpload').hidden = v !== 'upload';
+    if (v === 'type') $('#sigTypeText').focus();
   });
 
   const typed = $('#sigTypeText');
@@ -36,6 +42,7 @@ export function initSign() {
   };
   typed.addEventListener('input', refreshTypePreview);
   face.addEventListener('change', refreshTypePreview);
+  typed.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#signConfirm').click(); });
   refreshTypePreview();
 
   $('#sigFile').addEventListener('change', async (e) => {
@@ -44,15 +51,60 @@ export function initSign() {
     if (!file) return;
     try {
       uploaded = await addAsset(await keyOutWhite(file));
-      toast('Signature image ready. Pick a page and position it.', 'ok');
+      const preview = $('#sigUploadPreview');
+      preview.hidden = false;
+      $('img', preview).src = uploaded.url;
     } catch (err) {
       toast(`Could not read that image: ${err.message}`, 'err');
     }
   });
 
-  $('#btnSigPlace').onclick = openPlacement;
-  on('pages', refreshPageMenu);
+  initDialog();
+
+  // The dock: make one, or put an existing one on the chosen page.
+  $('#btnSigNew').onclick = async () => {
+    const page = chosenPage();
+    if (!page) return;
+    const asset = await createSignature();
+    if (asset) await placeSignature(asset, page);
+  };
+
+  // The editor's Sign button: straight to the dialog the first time, then a
+  // short menu of the signatures already made.
+  $('#viewSign').onclick = async () => {
+    live();
+    if (!signatures.length) {
+      const asset = await createSignature();
+      const page = currentPage();
+      if (asset && page) await placeSignature(asset, page, visibleCenter());
+      return;
+    }
+    toggleMenu();
+  };
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.viewer-signwrap')) toggleMenu(false);
+  });
+
+  on('pages', () => { refreshPageMenu(); renderPlaced(); });
+  on('sources', () => { live(); renderSignatures(); });
+  // Picking a single page in the grid makes it the signature's page.
+  on('sel', () => {
+    if (state.sel.size === 1) $('#sigPage').value = [...state.sel][0];
+  });
   refreshPageMenu();
+  renderSignatures();
+}
+
+function chosenPage() {
+  const page = state.pages.find((p) => p.uid === $('#sigPage').value);
+  if (!page) toast('Add a page first.', 'err');
+  return page;
+}
+
+/** Start over releases every asset; forget the signatures that went with them. */
+function live() {
+  signatures = signatures.filter((a) => state.assets.has(a.id));
+  if (uploaded && !state.assets.has(uploaded.id)) uploaded = null;
 }
 
 function refreshPageMenu() {
@@ -61,6 +113,133 @@ function refreshPageMenu() {
   menu.textContent = '';
   state.pages.forEach((page, i) => menu.append(el('option', { value: page.uid, text: `Page ${i + 1}` })));
   if ([...menu.options].some((o) => o.value === previous)) menu.value = previous;
+}
+
+function renderSignatures() {
+  const host = $('#sigList');
+  host.textContent = '';
+  for (const asset of signatures) {
+    host.append(el('button', {
+      class: 'sigcard',
+      title: 'Put this signature on the page',
+      'aria-label': 'Put this signature on the chosen page',
+      onclick: () => { const page = chosenPage(); if (page) placeSignature(asset, page); },
+    }, el('img', { src: asset.url, alt: '' })));
+  }
+  $('#sigListHint').hidden = !signatures.length;
+  $('#btnSigNew').classList.toggle('primary', !signatures.length);
+  $('#btnSigNew').lastChild.textContent = signatures.length ? 'Create another signature' : 'Create a signature';
+}
+
+/** The signatures already on pages, each with a way to find it and to remove it. */
+function renderPlaced() {
+  const host = $('#sigPlaced');
+  host.textContent = '';
+  const rows = [];
+  state.pages.forEach((page, i) => {
+    for (const stamp of page.stamps) {
+      if (stamp.role !== 'signature') continue;
+      const asset = state.assets.get(stamp.assetId);
+      rows.push(el('div', { class: 'row' },
+        el('button', {
+          class: 'row-open',
+          title: 'Show it on the page',
+          onclick: () => openViewer(page.uid, { pick: stamp.id }),
+        },
+        asset ? el('img', { class: 'row-thumb', src: asset.url, alt: '' }) : null,
+        el('div', { class: 'grow' },
+          el('div', { text: 'Signature' }),
+          el('div', { class: 'sub', text: `Page ${i + 1} · click to move it` }))),
+        el('button', { title: 'Remove', 'aria-label': `Remove the signature on page ${i + 1}`, html: TRASH,
+          onclick: () => removeStampGroup(stamp.group) })));
+    }
+  });
+  if (!rows.length) return;
+  host.append(el('hr'), el('div', { class: 'lbl', text: `On the pages (${rows.length})` }), ...rows);
+}
+
+/* ───────────────────────── the editor's menu ───────────────────────── */
+
+function toggleMenu(force) {
+  const menu = $('#viewSignMenu');
+  const open = force ?? menu.hidden;
+  $('#viewSign').setAttribute('aria-expanded', String(open));
+  menu.hidden = !open;
+  if (!open) return;
+  menu.textContent = '';
+  for (const asset of signatures) {
+    menu.append(el('button', {
+      role: 'menuitem',
+      class: 'sigcard',
+      'aria-label': 'Place this signature',
+      onclick: () => {
+        toggleMenu(false);
+        const page = currentPage();
+        if (page) placeSignature(asset, page, visibleCenter());
+      },
+    }, el('img', { src: asset.url, alt: '' })));
+  }
+  menu.append(el('button', {
+    role: 'menuitem',
+    class: 'btn tiny ghost',
+    text: 'New signature…',
+    onclick: async () => {
+      toggleMenu(false);
+      const asset = await createSignature();
+      const page = currentPage();
+      if (asset && page) await placeSignature(asset, page, visibleCenter());
+    },
+  }));
+  menu.querySelector('button')?.focus();
+}
+
+/* ───────────────────────── the dialog ───────────────────────── */
+
+let settle = null;     // resolves the open dialog
+let opener = null;     // where the focus goes back to
+
+function initDialog() {
+  const close = () => finishDialog(null);
+  $('#signClose').onclick = close;
+  $('#signCancel').onclick = close;
+  $('#signDialog').addEventListener('pointerdown', (e) => { if (e.target === $('#signDialog')) close(); });
+  $('#signDialog').addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  $('#signConfirm').onclick = async () => {
+    let asset;
+    try {
+      asset = await currentAsset();
+    } catch (err) {
+      toast(err.message, 'err');
+      return;
+    }
+    if (!signatures.includes(asset)) signatures.push(asset);
+    renderSignatures();
+    pad.clear();
+    finishDialog(asset);
+  };
+}
+
+/** Opens the dialog; resolves with the new signature's asset, or null. */
+export function createSignature() {
+  live();
+  finishDialog(null);
+  opener = document.activeElement;
+  $('#signDialog').hidden = false;
+  $('.sign-card').focus();
+  return new Promise((resolve) => { settle = resolve; });
+}
+
+function finishDialog(value) {
+  $('#signDialog').hidden = true;
+  const done = settle;
+  settle = null;
+  if (done) {
+    opener?.focus?.();
+    done(value);
+  }
 }
 
 /* ───────────────────────── the pad ───────────────────────── */
@@ -222,51 +401,33 @@ async function keyOutWhite(file, threshold = 232) {
 
 /* ───────────────────────── placement ───────────────────────── */
 
-async function openPlacement() {
-  const page = state.pages.find((p) => p.uid === $('#sigPage').value);
-  if (!page) { toast('Add a page first.', 'err'); return; }
-
-  let asset;
-  try {
-    asset = await currentAsset();
-  } catch (err) {
-    toast(err.message, 'err');
-    return;
-  }
-
+/**
+ * Puts a signature on a page and opens the page with it selected, so it can
+ * be dragged into place straight away. `at` is where its center goes, as page
+ * fractions (v up); by default the lower right, where signatures usually sit.
+ */
+export async function placeSignature(asset, page, at = null) {
+  const { w: wPt, h: hPt } = await displayInfo(page);
   const ratio = asset.h / asset.w;
-  const spot = await place(page, {
-    title: 'Position your signature',
-    confirm: 'Place signature',
-    build(item, stage) {
-      // Default: a third of the page width, sitting on the lower right.
-      const width = stage.w * 0.33;
-      Object.assign(item.style, {
-        width: `${width}px`,
-        height: `${width * ratio}px`,
-        left: `${stage.w * 0.58}px`,
-        top: `${stage.h * 0.76}px`,
-      });
-      item.prepend(el('img', { src: asset.url, alt: 'Signature' }));
-      return {
-        resize(w) {
-          item.style.width = `${w}px`;
-          item.style.height = `${w * ratio}px`;
-        },
-      };
-    },
-  });
-  if (!spot) return;
+  // A third of the page wide, unless that would make a tall image very tall.
+  let w = 0.3;
+  if ((w * wPt * ratio) / hPt > 0.18) w = (0.18 * hPt) / (wPt * ratio);
+  const h = (w * wPt * ratio) / hPt;
+  const spot = at ?? { u: 0.92 - w / 2, v: 0.1 + h / 2 };
+  const u = Math.max(w / 2, Math.min(1 - w / 2, spot.u));
+  const v = Math.max(h / 2, Math.min(1 - h / 2, spot.v));
 
-  addStamps([page], [{
-    group: `sig-${asset.id}-${Date.now()}`,
+  const [stamp] = addStamps([page], [{
+    group: uid('sig'),
     type: 'image',
+    role: 'signature',
     assetId: asset.id,
-    u: spot.u,
-    v: spot.v,
-    w: spot.w,
+    u,
+    v,
+    w,
     rot: 0,
     opacity: 1,
-  }]);
-  toast(`Signature placed on page ${state.pages.indexOf(page) + 1}.`, 'ok');
+  }], 'Add a signature');
+  openViewer(page.uid, { pick: stamp.id });
+  toast(`Signature added to page ${numberOf(page)}. Drag it into place, or pull its corner to resize.`, 'ok', 5000, null, 'placed');
 }

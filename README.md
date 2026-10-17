@@ -17,7 +17,7 @@ ES modules from the filesystem. That is the only reason `serve.js` exists.
 
 It lives at `paperstack.gwark.dev` and links back from the top bar, which
 carries gwark.dev's own mark and returns you to the `#projects` rack it was
-launched from. The empty state links home too.
+launched from.
 
 The mark is inlined in `index.html` rather than loaded as a file, so it takes
 the link's color in both themes. It is traced from gwark.dev's master logo
@@ -30,28 +30,64 @@ Both URLs live in `index.html` and in the `OUTBOUND_ALLOWED` list in
 
 ## What it does
 
-Click the magnifier on any page, or just double-click it, to open the
-**full-size viewer**: one page at a time, zoomable, with the watermarks and
-signatures you have queued drawn on top, so you see what you are about to
-export. Arrow keys page through it, `+` and `-` zoom, `0` fits, `[` and `]`
-rotate, `Esc` closes.
+Every page has an **Edit** button (or double-click it, or focus it and press
+Enter). It opens the **page editor**: one page at a time, full size and
+zoomable, with everything you have queued drawn on top, so you see what you are
+about to export. Everything that changes a single page happens here, from one
+row of tools:
 
-You can mark the page right there, too. **Draw** (`D`) puts down freehand
-lines, exported as vector paths so they stay sharp. **Text** (`T`) lets you
-click anywhere and type; Enter places it, Shift+Enter adds a line. Pick a color
-and a pen or text size from the strip that appears. **Undo** (`Ctrl/Cmd+Z`)
-takes back the latest mark on the page you are looking at, whichever tool made
-it. It is a labeled pill with a straight arrow, so it is never mistaken for
-the curved rotate buttons. Drawings and typed text also appear under Notes,
-where any one of them can be removed later.
+- **Select** (`V`) is the default. Click any mark to pick it up: drag it to
+  move it, pull its corner to resize a signature or rewrap a note, press
+  `Delete` to remove it.
+- **Draw** (`D`) puts down freehand lines, exported as vector paths so they
+  stay sharp.
+- **Text** (`T`): click anywhere and type. Enter places it, Shift+Enter adds a
+  line.
+- **Sticky note** (`N`): click the spot the note is about and type. It becomes
+  a real PDF comment.
+- **Sign** (`S`): the first time, it opens a dialog to draw, type or upload a
+  signature; after that it offers the ones you have made. The signature lands
+  in view, selected, ready to drag.
+
+On a touch screen, swipe across the page to turn to the next or previous one,
+pinch to zoom the page (not the whole app), and double-tap to zoom in or back
+out to the whole page.
+
+Pick a color and pen or text size from the options that appear beside the
+tool. Arrow keys page through, `+` and `-` zoom, `[` and `]` rotate, and `Esc`
+lets go of a selected mark, then puts the tool down, then goes back to all
+pages.
+
+**Undo and redo cover everything**: a deleted page, a rotation, a reorder, a
+dragged signature. `Ctrl/Cmd+Z` and `Ctrl/Cmd+Shift+Z` work everywhere, there
+are Undo and Redo buttons above the pages and in the editor, and deleting a
+page puts an Undo button right on the message that confirms it.
+
+No PDF to hand? **Start with a blank page**, Letter or A4, from the empty
+screen. It opens in the editor, ready to sign, write or sketch on.
+
+**Putting pages where they belong.** Drag a PDF or an image onto the page grid
+and it goes in at the marker, between whichever two pages you aim for. Hover
+the gap between two pages for a **+** that adds a blank page or files right
+there; a blank page takes the size of the page beside it. The dashed tile at
+the end adds either at the end, and **Insert after** does the same next to the
+pages you have selected (the way to do it on a phone). With several files open,
+a colored dot under each page says which file it came from; click a file under
+Open files to select all its pages, then drag them, or use **Move to…** (above
+the pages, or under Organize) to make them page 3, or any other number: the
+page you ask for is the page it becomes.
+
+**Export** writes the PDF. The arrow beside it saves pages as **JPG or PNG
+images** instead, every watermark, signature and drawing included: the
+selected pages, or all of them as a zip.
 
 | Tool | |
 |---|---|
 | **Organize** | Merge several PDFs, drag pages into any order, rotate, duplicate, delete, reverse. Drop images in to add them as pages. |
 | **Compress** | Structural rewrite that keeps text selectable, or redraw every page as a JPEG at a chosen resolution for scans. |
 | **Watermark** | Text or image, at any angle (drag the slider or type an exact value), opacity, color and placement. Single or tiled, on all pages, a selection, or a range. |
-| **Sign** | Draw with a mouse or finger, type one in a script face, or upload a photo of your signature (white paper is keyed out automatically). Drag it into place on a full-size page. |
-| **Notes** | Write a note onto any page, on a yellow or white card or bare, and drag it into place; it prints and shows in every app. Or leave a sticky note: a real PDF comment that opens when clicked in Preview or Acrobat, stays editable there, and does not print. |
+| **Sign** | Draw with a mouse or finger, type one in a script face, or upload a photo of your signature (white paper is keyed out automatically). Each one is kept for the session; click it to put it on a page, where it opens selected and ready to drag. |
+| **Notes** | Write a note onto any page, on a yellow or white card or bare; it prints and shows in every app. Or leave a sticky note: a real PDF comment that opens when clicked in Preview or Acrobat, stays editable there, and does not print. Either opens on its page to be dragged into place, and every note listed can be clicked to find it. |
 | **Extract** | Pull out the text layer, or find and save embedded images. |
 | **Split** | Selected pages, custom ranges, every N pages, or one file per page. Several files come back as a zip. |
 
@@ -65,9 +101,14 @@ on macOS, iOS, Android and Windows; not Firefox on desktop).
 drop zone. It confirms first, and the prompt says how many pages and marks you
 are about to lose.
 
-Shortcuts: `Cmd/Ctrl+A` select all, `Cmd/Ctrl+S` export, `[` and `]` rotate,
-`Delete` remove, `Esc` clear selection. The viewer has its own set, listed
-along the bottom of its window.
+Selecting pages brings their actions (rotate, duplicate, delete) up into the
+header above the grid, and a small badge on each page counts the marks queued
+on it.
+
+Shortcuts: arrow keys move between pages, `Space` selects, `Enter` opens the
+editor, `Cmd/Ctrl+A` select all, `Cmd/Ctrl+S` export, `[` and `]` rotate,
+`Delete` remove, `Cmd/Ctrl+Z` undo, `Esc` clear selection. The editor has its
+own set, listed along the bottom of its window.
 
 ## How it looks
 
@@ -93,14 +134,17 @@ index.html            all the markup; the JS only wires it up
 css/app.css           one stylesheet, CSS custom properties, two themes
 js/
   main.js             file intake, dock, export, theme, shortcuts
-  state.js            the workspace: sources, page order, stamps, selection
+  state.js            the workspace: sources, page order, stamps, selection, history
   assemble.js         workspace to PDF bytes, via pdf-lib
   pdfjs.js            PDF.js setup, thumbnail cache, render queue
   lib/geometry.js     stamp placement math (no DOM, no pdf-lib, unit tested)
   lib/zip.js          a "stored" zip writer, about 90 lines
   lib/dom.js          small helpers
   ui/pagegrid.js      thumbnails, selection, drag-to-reorder
-  ui/viewer.js        the full-size page viewer
+  ui/viewer.js        the page editor: one page full size, its tools and keys
+  ui/markup.js        the editor's tools: draw, type, sticky notes
+  ui/arrange.js       picking up, moving, resizing and deleting marks
+  ui/history.js       undo and redo, their buttons, keys and toasts
   ui/stamps.js        draws queued marks over a page (grid and viewer share it)
   ui/feedback.js      toasts and the progress overlay
   tools/*.js          one module per panel

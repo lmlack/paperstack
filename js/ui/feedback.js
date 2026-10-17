@@ -7,15 +7,33 @@ const overlay = $('#busy');
 const label = $('#busyLabel');
 const bar = $('#busyBar');
 
-export function toast(message, kind = '', ms = 4200) {
-  const node = el('div', { class: `toast ${kind}`.trim(), text: message });
-  host.append(node);
-  setTimeout(() => {
+/**
+ * A short message at the bottom of the screen. With `action` ({ label, run })
+ * it carries a button, e.g. Undo, and stays a little longer to give time to
+ * reach it. Toasts with the same `key` replace each other rather than stack.
+ */
+export function toast(message, kind = '', ms = 4200, action = null, key = null) {
+  if (key) host.querySelector(`[data-key="${key}"]`)?.remove();
+  const node = el('div', { class: `toast ${kind}`.trim(), role: kind === 'err' ? 'alert' : 'status' },
+    el('span', { text: message }));
+  if (key) node.dataset.key = key;
+  let timer = 0;
+  const dismiss = () => {
+    clearTimeout(timer);
     node.style.transition = 'opacity .25s, transform .25s';
     node.style.opacity = '0';
     node.style.transform = 'translateY(6px)';
     setTimeout(() => node.remove(), 300);
-  }, ms);
+  };
+  if (action) {
+    node.append(el('button', { class: 'toast-act', text: action.label,
+      onclick: () => { dismiss(); action.run(); } }));
+    ms = Math.max(ms, 6500);
+  }
+  // Older toasts make way, so a burst of them never covers the page.
+  while (host.children.length >= 3) host.firstElementChild.remove();
+  host.append(node);
+  timer = setTimeout(dismiss, ms);
 }
 
 let depth = 0;

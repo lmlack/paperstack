@@ -265,13 +265,16 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
   padding: 6px 14px; border-radius: var(--pill);
 }
 .badge .ico { width: 14px; height: 14px; }
-.dz-home { margin-top: 22px !important; font-size: var(--text-base); color: var(--ink-2); }
-.dz-home a { color: var(--accent); font-weight: 700; text-underline-offset: 3px; }
+.dz-blank { margin-top: 26px; padding-top: 22px; border-top: 1.5px dashed var(--line); }
+.dz-or { display: block; font-size: var(--text-sm); font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .07em; }
+.dz-blank-btns { display: flex; gap: 10px; justify-content: center; margin: 12px 0 10px; flex-wrap: wrap; }
+.dz-blank-btns .btn { min-width: 120px; }
+.dz-inner .dz-blank-hint { font-size: var(--text-sm); color: var(--ink-3); }
 .dz-stars { margin-top: 20px; font-size: 13px; letter-spacing: 7px; color: var(--ink-3); user-select: none; }
 :root[data-theme="dark"] .dz-stars { color: var(--violet); }
 
 /* workspace */
-.workspace { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.workspace { flex: 1; display: flex; flex-direction: column; min-width: 0; container-type: inline-size; }
 .ws-head {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 18px; border-bottom: 1px solid var(--line);
@@ -279,8 +282,20 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 }
 .ws-head-left { display: flex; align-items: baseline; gap: 10px; }
 .ws-head-left strong { font-size: var(--text-lg); font-weight: 700; letter-spacing: -.01em; }
-.ws-head-left .muted { font-size: var(--text-sm); font-family: var(--mono); }
+.ws-head-left .muted { font-size: var(--text-sm); }
+#selCount { font-family: var(--mono); font-weight: 700; color: var(--accent); }
+.ws-hint b { color: var(--ink-2); }
+/* Bulk actions show up next to the count as soon as anything is selected. */
+.ws-sel { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.ws-sel .btn svg { width: 15px; height: 15px; }
+/* Short of room, the simple actions keep their icons and tooltips only. */
+@container (max-width: 1180px) {
+  #selRotL span, #selRotR span, #selDup span, #selDel span { display: none; }
+  #selRotL, #selRotR, #selDup, #selDel { padding-inline: 8px; }
+}
 .ws-head-right { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+.ws-head-right .viewer-sep { margin: 0 3px; }
+@media (max-width: 1180px) { .ws-hint { display: none; } }
 .zoom { display: flex; align-items: center; gap: 7px; color: var(--ink-3); padding-left: 8px; }
 .zoom .ico { width: 15px; height: 15px; }
 .zoom input { width: 96px; }
@@ -318,23 +333,77 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
   background: var(--accent); border-radius: var(--pill);
 }
 .tile.drop-before::before { left: -11px; }
+
+/* The "+" between two pages, for putting something in right there. */
+.tile .slot {
+  position: absolute; z-index: 2; left: -24px; top: 38%;
+  width: 28px; height: 28px; padding: 0; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  background: var(--panel); color: var(--accent); border: 1.5px solid var(--accent);
+  box-shadow: var(--shadow); opacity: 0; transform: scale(.8);
+  transition: opacity .12s, transform .12s;
+}
+.tile .slot svg { width: 15px; height: 15px; }
+/* Showing when the pointer is near the gap it belongs to: over this page's
+   left edge, or the right edge of the page before. */
+.tile:hover .slot, .tile .slot:focus-visible, .tile .slot[aria-expanded="true"] { opacity: 1; transform: none; }
+.tile .slot:hover { background: var(--accent); color: var(--bg); }
+@media (hover: none) { .tile .slot { display: none; } }   /* touch: "Insert after" and the add tile */
+
+/* The add tile that ends the grid. */
+.add-tile {
+  display: flex; flex-direction: column; gap: 10px; justify-content: center;
+  aspect-ratio: 1 / 1.3; padding: 14px;
+  border: 2px dashed var(--line); border-radius: var(--radius);
+  transition: border-color .13s, background .13s;
+}
+.add-tile.drop-here { border-color: var(--accent); background: var(--accent-soft); }
+.add-tile-btn {
+  appearance: none; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px; border-radius: var(--radius); cursor: pointer;
+  background: transparent; border: 1.5px solid transparent; color: var(--ink-2);
+  font: inherit; font-size: var(--text-sm);
+}
+.add-tile-btn span svg { width: 24px; height: 24px; }
+.add-tile-btn:hover, .add-tile-btn:focus-visible { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); outline: none; }
+
+.srcdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; flex: none; }
+.row .srcdot { width: 11px; height: 11px; margin: 0; }
 .tile.drop-after::after { right: -11px; }
 
-/* the magnifier that opens the full-size view */
+/* The way into the page editor: a labeled pill over the page on hover. */
 .tile .expand {
   position: absolute; inset: 0; border: 0; background: transparent;
-  display: grid; place-items: center; cursor: zoom-in;
+  display: grid; place-items: center; cursor: pointer;
   opacity: 0; transition: opacity .14s;
   pointer-events: none;            /* clicks pass through to select or drag … */
+  font-family: inherit;
 }
 .tile .expand span {
-  pointer-events: auto;            /* … except on the button itself */
-  display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%;
+  pointer-events: auto;            /* … except on the pill itself */
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 16px 9px 13px; border-radius: var(--pill);
   background: var(--solid); color: var(--solid-ink);
+  font-size: var(--text-ui); font-weight: 700;
   box-shadow: var(--shadow-lg);
 }
-.tile .expand svg { width: 21px; height: 21px; }
-.tile:hover .expand, .tile .expand:focus-visible { opacity: 1; }
+.tile .expand span:hover { filter: brightness(1.14); }
+.tile .expand svg { width: 17px; height: 17px; }
+.tile:hover .expand, .tile .thumb:focus-visible .expand, .tile .expand:focus-visible { opacity: 1; }
+/* Small tiles: the icon alone. The thumbnail is a size container already. */
+@container (max-width: 150px) { .tile .expand b { display: none; } .tile .expand span { padding: 10px; } }
+/* Touch screens have no hover, so the pill sits in the corner, always there. */
+@media (hover: none) {
+  .tile .expand { opacity: 1; place-items: start end; padding: 8px; }
+  .tile .expand span { padding: 7px 12px 7px 10px; font-size: var(--text-sm); }
+}
+/* How many marks are queued on a page, so edited pages stand out. */
+.tile .marks {
+  position: absolute; left: 8px; top: 8px; z-index: 1;
+  font-family: var(--mono); font-size: var(--text-xs); font-weight: 700;
+  padding: 2px 8px; border-radius: var(--pill);
+  background: var(--accent); color: var(--bg); pointer-events: none;
+}
 
 .tile-bar { display: flex; align-items: center; gap: 6px; padding: 8px 2px 0; }
 /* The page number reads as a label, not a footnote: full-strength ink on a
@@ -374,11 +443,35 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round
 .stamps .ink path, .viewer-ink path {
   fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke;
 }
-.stamps .st.comment, .place-item .comment-pin {
+.stamps .ink path.hit { stroke: transparent; stroke-width: 14px; }
+.stamps .st.comment {
   aspect-ratio: 1; border-radius: 3px; color: #1d1d1f; display: grid; place-items: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
 }
-.stamps .st.comment svg, .place-item .comment-pin svg { width: 80%; height: 80%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.stamps .st.comment svg { width: 80%; height: 80%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+
+/* Select mode in the editor: every mark can be picked up. */
+.viewer.mode-select #viewerStamps > .st { pointer-events: auto; cursor: grab; touch-action: none; }
+.viewer.mode-select #viewerStamps > .ink path.hit { pointer-events: stroke; cursor: grab; touch-action: none; }
+.viewer.mode-select #viewerStamps > .st:hover { outline: 1.5px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 3px; }
+#viewerStamps > .st.picked { outline: 2px solid var(--accent); outline-offset: 3px; cursor: move; }
+#viewerStamps > .ink.picked path:not(.hit) { filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 1px var(--accent)); }
+#viewerStamps .grip {
+  position: absolute; right: -10px; bottom: -10px; width: 18px; height: 18px;
+  background: var(--accent); border: 3px solid var(--panel); border-radius: 50%;
+  cursor: nwse-resize; box-shadow: var(--shadow);
+}
+/* A sticky note being written: the pin where it will go, and its card. */
+.viewer-ink .sticky-pin {
+  position: absolute; width: 22px; height: 22px; transform: translate(-50%, -50%);
+  border-radius: 3px; box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+.viewer-ink textarea.sticky-editor {
+  width: 230px; height: 104px; white-space: pre-wrap; overflow: auto;
+  background: #fff8c4; color: #1d1d1f; border: 1.5px solid #e2c94a; border-radius: 6px;
+  font-family: var(--sans); font-size: 14px; line-height: 1.45; padding: 9px 11px;
+  box-shadow: var(--shadow-lg);
+}
 
 /* ───────────────────────── dock ───────────────────────── */
 .dock {
@@ -489,6 +582,25 @@ textarea {
 }
 .row button { appearance: none; background: transparent; border: 0; color: var(--ink-3); cursor: pointer; padding: 4px; border-radius: var(--pill); }
 .row button:hover { color: var(--danger); background: var(--bg-3); }
+/* A row that opens its mark on the page: the whole left side is the button. */
+.row .row-open {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 11px; text-align: left;
+  color: inherit; font: inherit; padding: 0; border-radius: 6px;
+}
+.row .row-open:hover { color: var(--accent); background: transparent; }
+.row-thumb { width: 54px; height: 26px; object-fit: contain; background: var(--page); border-radius: 4px; flex: none; }
+
+/* saved signatures */
+.siglist { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
+.siglist:empty { display: none; }
+.sigcard {
+  appearance: none; display: grid; place-items: center; height: 72px; padding: 8px;
+  background: var(--page); border: 1.5px solid var(--line); border-radius: var(--radius); cursor: pointer;
+  transition: border-color .13s, box-shadow .13s;
+}
+.sigcard img { max-width: 100%; max-height: 100%; display: block; }
+.sigcard:hover, .sigcard:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
+#btnSigNew { margin-top: 14px; }
 .row svg { width: 15px; height: 15px; }
 .swatch { width: 14px; height: 14px; border-radius: 50%; flex: none; border: 1.5px solid var(--line); }
 
@@ -522,7 +634,10 @@ textarea {
 .imgcell:hover { border-color: var(--accent); }
 
 /* ───────────────────────── full-size viewer ───────────────────────── */
-.viewer { position: fixed; inset: 0; z-index: 45; background: var(--bg); display: flex; flex-direction: column; }
+/* The editor zooms the page itself; the browser's pinch and double-tap zoom
+   would take the toolbars along and strand them off screen. */
+.viewer { position: fixed; inset: 0; z-index: 45; background: var(--bg); display: flex; flex-direction: column; touch-action: pan-x pan-y; }
+.viewer-sheet { transform-origin: 0 0; }
 .viewer-bar {
   flex: none; display: flex; align-items: center; gap: 10px;
   padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
@@ -546,16 +661,32 @@ textarea {
   .viewer-tools .viewer-sep { margin: 0 3px; }
   .viewer-tools .viewer-zoom { min-width: 4.5ch; }
   .viewer-tools #viewFit { padding-inline: 8px; }
-  .viewer-sep-close { display: none; }
 }
-/* Draw / Text / Undo. The modes light up while on; Undo is a filled pill with
-   a word on it, deliberately unlike the bare curved rotate icons. */
+/* The editing row: tools on the left, the chosen tool's options after them.
+   The tool in hand lights up. Undo and Redo carry words and straight arrows,
+   deliberately unlike the bare curved rotate icons. */
+.viewer-back svg { width: 15px; height: 15px; }
+.viewer-edit {
+  flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 4px;
+  padding: 7px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+}
 .viewer-modes { display: flex; align-items: center; gap: 4px; }
-.viewer-mode[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-.viewer-pen {
-  flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px;
-  padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+.viewer-mode[aria-pressed="true"], .viewer-mode[aria-expanded="true"] {
+  background: var(--accent-soft); color: var(--accent); border-color: var(--accent);
 }
+.viewer-edit .btn svg { width: 16px; height: 16px; }
+.viewer-options { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; margin-left: 10px; min-width: 0; flex: 1; }
+.viewer-pen { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+.viewer-picked { display: flex; align-items: center; gap: 10px; font-size: var(--text-sm); font-weight: 700; color: var(--accent); }
+.viewer-signwrap { position: relative; }
+.signmenu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 5; width: 230px;
+  display: flex; flex-direction: column; gap: 6px; padding: 8px;
+  background: var(--panel); border: 1.5px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+.signmenu .sigcard { height: 60px; }
+.signmenu .btn { justify-content: flex-start; }
 .viewer-swatches { display: flex; align-items: center; gap: 6px; }
 .viewer-swatches button {
   width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--panel);
@@ -571,17 +702,30 @@ textarea {
 .viewer-size input { width: 120px; }
 .viewer-size output { font-family: var(--mono); min-width: 5ch; }
 .viewer-pen-hint { font-size: var(--text-sm); }
+/* Narrower screens: tool names give way to their icons, which keep tooltips. */
+@media (max-width: 1100px) {
+  .viewer-edit .viewer-mode span, .viewer-edit #viewUndo span, .viewer-edit #viewRedo span { display: none; }
+  .viewer-edit .viewer-mode, .viewer-edit #viewUndo, .viewer-edit #viewRedo { padding: 7px 9px; }
+}
 @media (max-width: 720px) {
-  .viewer-modes { width: 100%; justify-content: center; margin-bottom: 2px; }
-  .viewer-modes + .viewer-sep { display: none; }
-  .viewer-pen { padding: 8px 10px; justify-content: center; }
+  .viewer-edit { padding: 7px 10px; justify-content: center; }
+  .viewer-options { margin-left: 0; flex-basis: 100%; justify-content: center; }
   .viewer-pen-hint { display: none; }
+  .viewer-picked-name { display: none; }
+  /* Swatches, pen size and Done share one line. */
+  .viewer-options { gap: 8px 12px; }
+  .viewer-pen { gap: 8px 12px; flex-wrap: nowrap; }
+  .viewer-swatches { gap: 4px; }
+  #viewSizeLabel { display: none; }
+  .viewer-size input { width: 76px; }
+  .viewer-back span { display: none; }
 }
 
 /* the layer that catches the pen; inert unless a mode is on */
 .viewer-ink { position: absolute; inset: 0; pointer-events: none; }
 .viewer.mode-draw .viewer-ink { pointer-events: auto; cursor: crosshair; touch-action: none; }
 .viewer.mode-type .viewer-ink { pointer-events: auto; cursor: text; }
+.viewer.mode-note .viewer-ink { pointer-events: auto; cursor: copy; }
 .viewer-ink textarea {
   position: absolute; margin: 0; border: 1.5px dashed var(--accent); border-radius: 3px;
   background: rgba(255, 255, 255, .35); resize: none; overflow: hidden; outline: none;
@@ -599,7 +743,7 @@ textarea {
   border-radius: 4px; container-type: inline-size; flex: none;
 }
 .viewer-sheet canvas { display: block; width: 100%; height: 100%; border-radius: 4px; }
-.viewer.busy .viewer-sheet { opacity: .55; }
+.viewer.busy .viewer-sheet { cursor: progress; }
 .viewer-foot {
   flex: none; display: flex; align-items: center; gap: 16px;
   padding: 9px 16px; border-top: 1px solid var(--line); background: var(--panel);
@@ -637,16 +781,10 @@ textarea {
   .modal-card footer .field-row { margin-left: 0; width: 100%; }
   .modal-card footer .field-row .btn { flex: 1; }
 }
-.place-stage { position: relative; margin: 18px auto; background: var(--page); box-shadow: var(--shadow-lg); touch-action: none; }
-.place-stage canvas { display: block; }
-.place-item { position: absolute; border: 2px dashed var(--accent); border-radius: 4px; cursor: move; }
-.place-item img { display: block; width: 100%; height: 100%; pointer-events: none; }
-.place-item .note-card { white-space: pre; pointer-events: none; text-align: left; }
-.place-item.is-comment .comment-pin { width: 100%; height: 100%; pointer-events: none; }
-.place-item .grip {
-  position: absolute; right: -7px; bottom: -7px; width: 15px; height: 15px;
-  background: var(--accent); border: 2.5px solid var(--panel); border-radius: 50%; cursor: nwse-resize;
-}
+.sign-card { width: min(620px, 100%); }
+.sign-body { padding: 18px 18px 6px; }
+.sign-body .seg { margin-bottom: 14px; }
+.sign-card .padwrap canvas { height: 210px; }
 
 .overlay { position: fixed; inset: 0; z-index: 60; background: rgba(35, 31, 26, .5); display: grid; place-items: center; backdrop-filter: blur(4px); }
 :root[data-theme="dark"] .overlay { background: rgba(7, 3, 24, .7); }
@@ -657,16 +795,61 @@ textarea {
 .bar { height: 6px; background: var(--bg-3); border-radius: var(--pill); overflow: hidden; }
 .bar > div { height: 100%; width: 0; background: var(--accent); border-radius: var(--pill); transition: width .18s; }
 
-.toasts { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 70; display: flex; flex-direction: column; gap: 9px; align-items: center; pointer-events: none; }
+.toasts { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 70; display: flex; flex-direction: column; gap: 9px; align-items: center; pointer-events: none; width: max-content; max-width: calc(100vw - 24px); }
 .toast {
+  display: flex; align-items: center; gap: 14px; pointer-events: auto;
   background: var(--panel); color: var(--ink); border: 1.5px solid var(--line);
   padding: 12px 18px; border-radius: var(--pill);
   box-shadow: var(--shadow-lg); font-size: var(--text-ui); font-weight: 700; max-width: 460px;
   animation: pop .22s cubic-bezier(.2, .9, .3, 1.2);
 }
-/* Only err/ok carry a left stripe; a plain toast is a neutral pill. */
-.toast.err { border-left: 5px solid var(--danger); }
-.toast.ok { border-left: 5px solid var(--ok); }
+/* In the editor the bottom of the page is where signatures go; say things up top. */
+.viewer:not([hidden]) ~ .toasts { bottom: auto; top: 132px; }
+@media (max-width: 720px) { .viewer:not([hidden]) ~ .toasts { top: auto; bottom: 16px; } }
+.sign-card:focus { outline: none; }
+.ws-head-right .btn svg { width: 15px; height: 15px; }
+/* Export with a little arrow beside it for the other formats. */
+.splitbtn { display: inline-flex; }
+.splitbtn #btnExport { border-top-right-radius: 0; border-bottom-right-radius: 0; padding-right: 13px; }
+.splitbtn-more {
+  border-top-left-radius: 0; border-bottom-left-radius: 0; padding: 9px 11px 9px 9px;
+  border-left: 1px solid color-mix(in srgb, var(--solid-ink) 30%, transparent) !important;
+}
+
+/* popup menus */
+.popmenu {
+  position: fixed; z-index: 80; min-width: 230px; max-width: calc(100vw - 16px);
+  display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  background: var(--panel); border: 1.5px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg); animation: pop .16s ease-out;
+}
+.popmenu-item {
+  appearance: none; display: flex; align-items: center; gap: 11px; text-align: left;
+  padding: 9px 12px; border-radius: 8px; border: 0; background: transparent; cursor: pointer;
+  font: inherit; font-size: var(--text-ui); font-weight: 700; color: var(--ink);
+}
+.popmenu-item:hover, .popmenu-item:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+.popmenu-ico svg { width: 18px; height: 18px; display: block; }
+.popmenu-text { display: flex; flex-direction: column; }
+.popmenu-hint { font-size: var(--text-xs); font-weight: 400; color: var(--ink-3); }
+.popmenu-title { font-size: var(--text-xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); padding: 6px 8px 2px; }
+.moveto-row .btn { flex: none; padding-inline: 24px; }
+.moveto-row input { font-family: var(--mono); }
+.moveform { display: flex; flex-direction: column; gap: 8px; padding: 2px 4px 4px; }
+.moveform-row { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 700; color: var(--ink-2); padding: 0 4px; }
+.moveform-row input { width: 76px; padding: 6px 10px; font-family: var(--mono); }
+.moveform-quick { display: flex; gap: 4px; }
+.moveform-quick .btn { flex: 1; }
+
+.toast-act {
+  appearance: none; border: 0; background: var(--solid); color: var(--solid-ink);
+  font: inherit; font-size: var(--text-sm); padding: 6px 14px; border-radius: var(--pill);
+  cursor: pointer; flex: none; margin-right: -8px;
+}
+.toast-act:hover { filter: brightness(1.14); }
+/* Only err/ok carry a stripe at each end; a plain toast is a neutral pill. */
+.toast.err { border-left: 5px solid var(--danger); border-right: 5px solid var(--danger); }
+.toast.ok { border-left: 5px solid var(--ok); border-right: 5px solid var(--ok); }
 @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.97); } }
 
 /* ───────────────────────── responsive ───────────────────────── */

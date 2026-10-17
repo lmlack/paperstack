@@ -59,13 +59,18 @@
     <button class="btn secondary" id="btnShare" hidden title="Send with AirDrop, Mail, Messages and the rest of your device's share sheet">
       <svg viewBox="0 0 24 24" class="ico"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M8 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/></svg><span>Share</span>
     </button>
-    <button class="btn primary" id="btnExport" hidden>
-      <svg viewBox="0 0 24 24" class="ico"><path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 20h16"/></svg>Export PDF
-    </button>
+    <div class="splitbtn" id="exportGroup" hidden>
+      <button class="btn primary" id="btnExport">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M4 20h16"/></svg>Export PDF
+      </button>
+      <button class="btn primary splitbtn-more" id="btnExportMore" aria-haspopup="menu" aria-label="More ways to export" title="Export as images">
+        <svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </div>
   </div>
 </header>
 
-<input type="file" id="fileInput" accept="application/pdf,.pdf" multiple hidden>
+<input type="file" id="fileInput" accept="application/pdf,.pdf,image/png,image/jpeg,image/webp" multiple hidden>
 <input type="file" id="imageInput" accept="image/png,image/jpeg,image/webp" multiple hidden>
 
 <main class="layout" id="layout">
@@ -81,8 +86,19 @@
         <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M5 12h14M12 5v14"/></svg>No page limits</span>
         <span class="badge"><svg viewBox="0 0 24 24" class="ico"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/></svg>Works offline</span>
       </div>
+      <div class="dz-blank">
+        <span class="dz-or">or start with a blank page</span>
+        <div class="dz-blank-btns">
+          <button class="btn secondary" data-blank="letter">
+            <svg viewBox="0 0 24 24" class="ico"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>Letter
+          </button>
+          <button class="btn secondary" data-blank="a4">
+            <svg viewBox="0 0 24 24" class="ico"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>A4
+          </button>
+        </div>
+        <p class="dz-blank-hint">To sign, write a note or sketch on. You can add more pages and files later.</p>
+      </div>
       <div class="dz-stars" aria-hidden="true">✦ ✧ ✦ ✧ ✦ ✧ ✦</div>
-      <p class="dz-home">One of the small tools at <a href="https://gwark.dev/">gwark.dev</a></p>
     </div>
   </section>
 
@@ -92,10 +108,27 @@
       <div class="ws-head-left">
         <strong>Pages</strong>
         <span class="muted" id="selCount"></span>
+        <span class="muted ws-hint" id="gridHint">Click to select. Double-click, or press <b>Edit</b>, to sign, draw or type on a page.</span>
+      </div>
+      <!-- What can be done to the pages you picked, right where you picked them. -->
+      <div class="ws-sel" id="selActions" role="toolbar" aria-label="Selected pages" hidden>
+        <button class="btn tiny ghost" id="selRotL" title="Rotate left ([)"><svg viewBox="0 0 24 24"><path d="M9 4 4.5 8.5 9 13"/><path d="M4.5 8.5h8A6.5 6.5 0 0 1 19 15v1"/></svg><span>Left</span></button>
+        <button class="btn tiny ghost" id="selRotR" title="Rotate right (])"><svg viewBox="0 0 24 24"><path d="m15 4 4.5 4.5L15 13"/><path d="M19.5 8.5h-8A6.5 6.5 0 0 0 5 15v1"/></svg><span>Right</span></button>
+        <button class="btn tiny ghost" id="selDup" title="Duplicate"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5H6a2 2 0 0 0-2 2v9"/></svg><span>Duplicate</span></button>
+        <button class="btn tiny ghost" id="selMove" title="Move the selected pages to another spot" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24"><path d="M12 3v18M12 3 8 7M12 3l4 4M12 21l-4-4M12 21l4-4"/></svg><span>Move to…</span>
+        </button>
+        <button class="btn tiny ghost" id="selInsert" title="Insert a blank page or files after the selection" aria-haspopup="menu">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span>Insert after</span>
+        </button>
+        <button class="btn tiny ghost danger" id="selDel" title="Delete (Delete key)"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span>Delete</span></button>
       </div>
       <div class="ws-head-right">
+        <button class="btn tiny ghost" data-history="undo" id="btnUndo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6M4 12h16"/></svg><span>Undo</span></button>
+        <button class="btn tiny ghost" data-history="redo" id="btnRedo" title="Redo (Ctrl+Shift+Z)"><svg viewBox="0 0 24 24"><path d="m14 6 6 6-6 6M20 12H4"/></svg><span>Redo</span></button>
+        <span class="viewer-sep"></span>
         <button class="btn tiny ghost" id="btnSelectAll">Select all</button>
-        <button class="btn tiny ghost" id="btnSelectNone">Clear selection</button>
+        <button class="btn tiny ghost" id="btnSelectNone" hidden>Clear</button>
         <label class="zoom">
           <svg viewBox="0 0 24 24" class="ico"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/></svg>
           <input type="range" id="zoom" min="110" max="340" step="10" value="180" aria-label="Thumbnail size">
@@ -108,21 +141,21 @@
   <!-- ─────────── tool dock ─────────── -->
   <aside class="dock" id="dock" hidden>
     <nav class="dock-tabs" role="tablist">
-      <button class="dock-tab active" data-panel="pages" role="tab">Organize</button>
-      <button class="dock-tab" data-panel="compress" role="tab">Compress</button>
-      <button class="dock-tab" data-panel="mark" role="tab">Watermark</button>
-      <button class="dock-tab" data-panel="sign" role="tab">Sign</button>
-      <button class="dock-tab" data-panel="notes" role="tab">Notes</button>
-      <button class="dock-tab" data-panel="extract" role="tab">Extract</button>
-      <button class="dock-tab" data-panel="split" role="tab">Split</button>
+      <button class="dock-tab active" data-panel="pages" role="tab" aria-selected="true" aria-controls="panel-pages">Organize</button>
+      <button class="dock-tab" data-panel="sign" role="tab" aria-selected="false" aria-controls="panel-sign">Sign</button>
+      <button class="dock-tab" data-panel="notes" role="tab" aria-selected="false" aria-controls="panel-notes">Notes</button>
+      <button class="dock-tab" data-panel="mark" role="tab" aria-selected="false" aria-controls="panel-mark">Watermark</button>
+      <button class="dock-tab" data-panel="compress" role="tab" aria-selected="false" aria-controls="panel-compress">Compress</button>
+      <button class="dock-tab" data-panel="split" role="tab" aria-selected="false" aria-controls="panel-split">Split</button>
+      <button class="dock-tab" data-panel="extract" role="tab" aria-selected="false" aria-controls="panel-extract">Extract</button>
     </nav>
 
     <div class="dock-body">
 
       <!-- Organize -->
-      <div class="panel active" id="panel-pages">
-        <p class="hint">Drag thumbnails to reorder. Click to select, shift-click for a range.
-          With nothing selected, these act on every page.</p>
+      <div class="panel active" id="panel-pages" role="tabpanel">
+        <p class="hint">Drag pages to reorder them. Click to select, shift-click for a range.
+          With nothing selected, these buttons act on <b>every</b> page.</p>
         <div class="field-row">
           <button class="btn block" id="btnRotL"><svg viewBox="0 0 24 24" class="ico"><path d="M9 4 4.5 8.5 9 13"/><path d="M4.5 8.5h8A6.5 6.5 0 0 1 19 15v1"/></svg>Rotate left</button>
           <button class="btn block" id="btnRotR"><svg viewBox="0 0 24 24" class="ico"><path d="m15 4 4.5 4.5L15 13"/><path d="M19.5 8.5h-8A6.5 6.5 0 0 0 5 15v1"/></svg>Rotate right</button>
@@ -136,6 +169,11 @@
           <button class="btn block" id="btnMoveFront">Move to front</button>
           <button class="btn block" id="btnMoveBack">Move to back</button>
         </div>
+        <label class="lbl" for="moveTo" id="moveToLabel">Move the selected page to page</label>
+        <div class="field-row moveto-row">
+          <input type="number" id="moveTo" min="1" value="1" inputmode="numeric">
+          <button class="btn" id="btnMoveTo" disabled>Move</button>
+        </div>
         <button class="btn block" id="btnReverse">Reverse page order</button>
         <hr>
         <label class="btn block secondary" for="imageInput">Add images as pages</label>
@@ -145,7 +183,7 @@
       </div>
 
       <!-- Compress -->
-      <div class="panel" id="panel-compress">
+      <div class="panel" id="panel-compress" role="tabpanel">
         <div class="seg" id="cmpMode">
           <button class="active" data-v="lossless">Optimize</button>
           <button data-v="raster">Shrink hard</button>
@@ -172,7 +210,7 @@
       </div>
 
       <!-- Watermark -->
-      <div class="panel" id="panel-mark">
+      <div class="panel" id="panel-mark" role="tabpanel">
         <div class="seg" id="wmKind">
           <button class="active" data-v="text">Text</button>
           <button data-v="image">Image</button>
@@ -235,7 +273,7 @@
       </div>
 
       <!-- Notes -->
-      <div class="panel" id="panel-notes">
+      <div class="panel" id="panel-notes" role="tabpanel">
         <div class="seg" id="ntKind">
           <button class="active" data-v="note">On the page</button>
           <button data-v="comment">Sticky note</button>
@@ -278,70 +316,26 @@
           <input type="color" id="ntIconColor" value="#ffd60a">
         </div>
 
-        <button class="btn primary block" id="btnNtPlace">Place on page…</button>
+        <button class="btn primary block" id="btnNtPlace">Put it on the page</button>
+        <p class="hint">It opens on the page, where you can drag it into place. Or open any page with <b>Edit</b> and use <b>Text</b> or <b>Sticky note</b> there.</p>
         <div class="stamplist" id="noteList"></div>
       </div>
 
       <!-- Sign -->
-      <div class="panel" id="panel-sign">
-        <div class="seg" id="sgMode">
-          <button class="active" data-v="draw">Draw</button>
-          <button data-v="type">Type</button>
-          <button data-v="upload">Upload</button>
-        </div>
-
-        <div id="sgDraw">
-          <div class="padwrap">
-            <canvas id="sigPad" width="760" height="300"></canvas>
-            <span class="padline"></span>
-            <span class="padhint">Sign here with your mouse or finger</span>
-          </div>
-          <div class="field-row">
-            <button class="btn block ghost" id="btnSigUndo">Undo stroke</button>
-            <button class="btn block ghost" id="btnSigClear">Clear</button>
-          </div>
-          <div class="field-row">
-            <div>
-              <label class="lbl">Pen <output id="sigPenOut">3 px</output></label>
-              <input type="range" id="sigPen" min="1" max="10" step="1" value="3">
-            </div>
-            <div>
-              <label class="lbl">Ink</label>
-              <input type="color" id="sigInk" value="#10213f">
-            </div>
-          </div>
-        </div>
-
-        <div id="sgType" hidden>
-          <label class="lbl" for="sigTypeText">Your name</label>
-          <input type="text" id="sigTypeText" placeholder="Alex Moreau" maxlength="60">
-          <label class="lbl">Style</label>
-          <select id="sigTypeFont">
-            <option value="'Snell Roundhand','Brush Script MT','Segoe Script',cursive">Flowing script</option>
-            <option value="'Zapfino','Apple Chancery','Lucida Calligraphy',cursive">Formal calligraphy</option>
-            <option value="'Georgia','Times New Roman',serif">Plain serif</option>
-            <option value="'Helvetica Neue',Arial,sans-serif">Plain sans</option>
-          </select>
-          <div class="typepreview" id="sigTypePreview"></div>
-        </div>
-
-        <div id="sgUpload" hidden>
-          <label class="btn block secondary" for="sigFile">Choose image of your signature…</label>
-          <input type="file" id="sigFile" accept="image/png,image/jpeg,image/webp" hidden>
-          <p class="hint">A PNG with a transparent background looks best, but white paper gets keyed out automatically.</p>
-        </div>
-
-        <hr>
-        <label class="lbl">Place on page</label>
-        <div class="field-row">
-          <select id="sigPage"></select>
-          <button class="btn" id="btnSigPlace">Position…</button>
-        </div>
-        <p class="hint">Drag the signature where it belongs, then confirm.</p>
+      <div class="panel" id="panel-sign" role="tabpanel">
+        <p class="hint">Make your signature once, then put it on as many pages as you like.</p>
+        <label class="lbl" for="sigPage">Put it on</label>
+        <select id="sigPage"></select>
+        <div class="siglist" id="sigList"></div>
+        <button class="btn primary block" id="btnSigNew">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"/></svg>Create a signature
+        </button>
+        <p class="hint" id="sigListHint" hidden>Click a signature to put it on that page. It opens there so you can drag it into place and resize it from the corner.</p>
+        <div class="stamplist" id="sigPlaced"></div>
       </div>
 
       <!-- Extract -->
-      <div class="panel" id="panel-extract">
+      <div class="panel" id="panel-extract" role="tabpanel">
         <div class="seg" id="exKind">
           <button class="active" data-v="text">Text</button>
           <button data-v="images">Images</button>
@@ -369,7 +363,7 @@
       </div>
 
       <!-- Split -->
-      <div class="panel" id="panel-split">
+      <div class="panel" id="panel-split" role="tabpanel">
         <label class="lbl">Mode</label>
         <select id="spMode">
           <option value="sel">Selected pages → one PDF</option>
@@ -400,74 +394,102 @@
 <!-- full-size page viewer -->
 <div class="viewer" id="viewer" hidden>
   <header class="viewer-bar">
+    <button class="btn tiny secondary viewer-back" id="viewBack" title="Back to all pages (Esc)">
+      <svg viewBox="0 0 24 24"><path d="M3.5 3.5h7v7h-7zM13.5 3.5h7v7h-7zM3.5 13.5h7v7h-7zM13.5 13.5h7v7h-7z"/></svg><span>All pages</span>
+    </button>
     <div class="viewer-nav">
-      <button class="btn ghost icon-btn" id="viewPrev" aria-label="Previous page">
+      <button class="btn ghost icon-btn" id="viewPrev" aria-label="Previous page" title="Previous page (←)">
         <svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg>
       </button>
       <span class="viewer-count" id="viewCount">Page 1 of 1</span>
-      <button class="btn ghost icon-btn" id="viewNext" aria-label="Next page">
+      <button class="btn ghost icon-btn" id="viewNext" aria-label="Next page" title="Next page (→)">
         <svg viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></svg>
       </button>
     </div>
     <span class="viewer-title" id="viewTitle"></span>
 
     <div class="viewer-tools">
-      <div class="viewer-modes" role="group" aria-label="Mark the page">
-        <button class="btn tiny ghost viewer-mode" id="viewDraw" aria-pressed="false" title="Draw on the page (D)">
-          <svg viewBox="0 0 24 24"><path d="m15.5 4.5 4 4L9 19H5v-4Z"/><path d="m13 7 4 4"/></svg>Draw
-        </button>
-        <button class="btn tiny ghost viewer-mode" id="viewType" aria-pressed="false" title="Type on the page (T)">
-          <svg viewBox="0 0 24 24"><path d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6"/></svg>Text
-        </button>
-        <!-- A plain arrow and a word, so it never reads as one of the curved rotate arrows. -->
-        <button class="btn tiny secondary" id="viewUndo" title="Undo the last mark on this page (Ctrl+Z)" disabled>
-          <svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6M4 12h16"/></svg>Undo
-        </button>
-      </div>
-
-      <span class="viewer-sep"></span>
-      <button class="btn ghost icon-btn" id="viewZoomOut" aria-label="Zoom out">
+      <button class="btn ghost icon-btn" id="viewZoomOut" aria-label="Zoom out" title="Zoom out (−)">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M8.2 11h5.6M20 20l-4.4-4.4"/></svg>
       </button>
       <span class="viewer-zoom" id="viewZoom">100%</span>
-      <button class="btn ghost icon-btn" id="viewZoomIn" aria-label="Zoom in">
+      <button class="btn ghost icon-btn" id="viewZoomIn" aria-label="Zoom in" title="Zoom in (+)">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M8.2 11h5.6M11 8.2v5.6M20 20l-4.4-4.4"/></svg>
       </button>
       <button class="btn tiny ghost" id="viewFit">Fit width</button>
 
       <span class="viewer-sep"></span>
-      <button class="btn ghost icon-btn" id="viewRotL" aria-label="Rotate left">
+      <button class="btn ghost icon-btn" id="viewRotL" aria-label="Rotate page left" title="Rotate page left ([)">
         <svg viewBox="0 0 24 24"><path d="M9 4 4.5 8.5 9 13"/><path d="M4.5 8.5h8A6.5 6.5 0 0 1 19 15v1"/></svg>
       </button>
-      <button class="btn ghost icon-btn" id="viewRotR" aria-label="Rotate right">
+      <button class="btn ghost icon-btn" id="viewRotR" aria-label="Rotate page right" title="Rotate page right (])">
         <svg viewBox="0 0 24 24"><path d="m15 4 4.5 4.5L15 13"/><path d="M19.5 8.5h-8A6.5 6.5 0 0 0 5 15v1"/></svg>
       </button>
-      <button class="btn ghost icon-btn danger" id="viewDelete" aria-label="Delete this page">
+      <button class="btn ghost icon-btn danger" id="viewDelete" aria-label="Delete this page" title="Delete this page">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
       </button>
-
-      <span class="viewer-sep viewer-sep-close"></span>
     </div>
     <!-- Outside the tools so it can keep the top row on a phone. -->
-    <button class="btn ghost icon-btn" id="viewClose" aria-label="Close the viewer">
+    <button class="btn ghost icon-btn" id="viewClose" aria-label="Close the editor" title="Close (Esc)">
       <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
     </button>
   </header>
 
-  <div class="viewer-pen" id="viewPen" hidden>
-    <div class="viewer-swatches" id="viewSwatches" role="group" aria-label="Ink color">
-      <button data-c="#1d1d1f" aria-label="Black" class="active"></button>
-      <button data-c="#1f4fd1" aria-label="Blue"></button>
-      <button data-c="#d12a2a" aria-label="Red"></button>
-      <button data-c="#178a3d" aria-label="Green"></button>
-      <input type="color" id="viewColor" value="#1d1d1f" aria-label="Any color">
+  <!-- The editing tools, one row, always showing: pick a tool on the left, its
+       options appear on the right. -->
+  <div class="viewer-edit" role="toolbar" aria-label="Edit this page">
+    <div class="viewer-modes" role="group" aria-label="Tool">
+      <button class="btn tiny ghost viewer-mode" id="viewSelect" data-mode="select" aria-pressed="true" title="Select, move and resize marks (V)">
+        <svg viewBox="0 0 24 24"><path d="M5 3.5 18.5 12l-6 1.5-3 6Z"/></svg><span>Select</span>
+      </button>
+      <button class="btn tiny ghost viewer-mode" id="viewDraw" data-mode="draw" aria-pressed="false" title="Draw on the page (D)">
+        <svg viewBox="0 0 24 24"><path d="m15.5 4.5 4 4L9 19H5v-4Z"/><path d="m13 7 4 4"/></svg><span>Draw</span>
+      </button>
+      <button class="btn tiny ghost viewer-mode" id="viewType" data-mode="type" aria-pressed="false" title="Type on the page (T)">
+        <svg viewBox="0 0 24 24"><path d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6"/></svg><span>Text</span>
+      </button>
+      <button class="btn tiny ghost viewer-mode" id="viewNote" data-mode="note" aria-pressed="false" title="Add a sticky note, a comment that does not print (N)">
+        <svg viewBox="0 0 24 24"><path d="M5 4h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-7l-5 4v-4H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/></svg><span>Sticky note</span>
+      </button>
+      <div class="viewer-signwrap">
+        <button class="btn tiny ghost viewer-mode" id="viewSign" aria-haspopup="menu" aria-expanded="false" title="Add your signature (S)">
+          <svg viewBox="0 0 24 24"><path d="M3 17c3-1 4-9 6-9s-1 9 1 9 3-5 4-5 0 4 2 4 3-2 5-2"/><path d="M3 21h18"/></svg><span>Sign</span>
+        </button>
+        <div class="signmenu" id="viewSignMenu" role="menu" hidden></div>
+      </div>
     </div>
-    <label class="viewer-size">
-      <span id="viewSizeLabel">Pen</span>
-      <input type="range" id="viewSize" min="1" max="12" step="0.5" value="2">
-      <output id="viewSizeOut">2 pt</output>
-    </label>
-    <span class="muted viewer-pen-hint" id="viewPenHint"></span>
+    <span class="viewer-sep"></span>
+    <button class="btn tiny ghost" id="viewUndo" data-history="undo" title="Undo (Ctrl+Z)" disabled>
+      <svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6M4 12h16"/></svg><span>Undo</span>
+    </button>
+    <button class="btn tiny ghost" id="viewRedo" data-history="redo" title="Redo (Ctrl+Shift+Z)" disabled>
+      <svg viewBox="0 0 24 24"><path d="m14 6 6 6-6 6M20 12H4"/></svg><span>Redo</span>
+    </button>
+
+    <div class="viewer-options">
+      <div class="viewer-pen" id="viewPen" hidden>
+        <div class="viewer-swatches" id="viewSwatches" role="group" aria-label="Ink color">
+          <button data-c="#1d1d1f" aria-label="Black" class="active"></button>
+          <button data-c="#1f4fd1" aria-label="Blue"></button>
+          <button data-c="#d12a2a" aria-label="Red"></button>
+          <button data-c="#178a3d" aria-label="Green"></button>
+          <input type="color" id="viewColor" value="#1d1d1f" aria-label="Any color">
+        </div>
+        <label class="viewer-size">
+          <span id="viewSizeLabel">Pen</span>
+          <input type="range" id="viewSize" min="1" max="12" step="0.5" value="2">
+          <output id="viewSizeOut">2 pt</output>
+        </label>
+      </div>
+      <div class="viewer-picked" id="viewPicked" hidden>
+        <span class="viewer-picked-name" id="viewPickedName"></span>
+        <button class="btn tiny ghost danger" id="viewPickedDelete" title="Delete this mark (Delete key)">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg><span>Delete</span>
+        </button>
+      </div>
+      <span class="muted viewer-pen-hint" id="viewPenHint"></span>
+      <button class="btn tiny primary" id="viewDone" title="Put the tool down and go back to Select (Esc)" hidden>Done</button>
+    </div>
   </div>
 
   <div class="viewer-stage" id="viewerStage">
@@ -483,29 +505,80 @@
     <span><kbd>+</kbd><kbd>−</kbd> zoom</span>
     <span><kbd>0</kbd> fit</span>
     <span><kbd>[</kbd><kbd>]</kbd> rotate</span>
+    <span><kbd>V</kbd> select</span>
     <span><kbd>D</kbd> draw</span>
     <span><kbd>T</kbd> text</span>
+    <span><kbd>N</kbd> sticky note</span>
+    <span><kbd>S</kbd> sign</span>
     <span><kbd>Ctrl</kbd><kbd>Z</kbd> undo</span>
-    <span><kbd>Esc</kbd> close</span>
+    <span><kbd>Esc</kbd> back</span>
   </footer>
 </div>
 
-<!-- placement modal -->
-<div class="modal" id="placeModal" hidden>
-  <div class="modal-card">
+<!-- making a signature -->
+<div class="modal" id="signDialog" hidden role="dialog" aria-modal="true" aria-labelledby="signDialogTitle">
+  <div class="modal-card sign-card" tabindex="-1">
     <header>
-      <strong id="placeTitle">Position your signature</strong>
-      <button class="btn ghost icon-btn" id="placeClose" aria-label="Close">✕</button>
+      <strong id="signDialogTitle">Create your signature</strong>
+      <button class="btn ghost icon-btn" id="signClose" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
     </header>
-    <div class="place-stage" id="placeStage">
-      <canvas id="placeCanvas"></canvas>
-      <div class="place-item" id="placeItem"><span class="grip" data-dir="se"></span></div>
+    <div class="sign-body">
+      <div class="seg" id="sgMode">
+        <button class="active" data-v="draw">Draw</button>
+        <button data-v="type">Type</button>
+        <button data-v="upload">Upload</button>
+      </div>
+
+      <div id="sgDraw">
+        <div class="padwrap">
+          <canvas id="sigPad" width="760" height="300"></canvas>
+          <span class="padline"></span>
+          <span class="padhint">Sign here with your mouse or finger</span>
+        </div>
+        <div class="field-row">
+          <button class="btn block ghost" id="btnSigUndo">Undo stroke</button>
+          <button class="btn block ghost" id="btnSigClear">Clear</button>
+        </div>
+        <div class="field-row">
+          <div>
+            <label class="lbl">Pen <output id="sigPenOut">3 px</output></label>
+            <input type="range" id="sigPen" min="1" max="10" step="1" value="3">
+          </div>
+          <div>
+            <label class="lbl">Ink</label>
+            <input type="color" id="sigInk" value="#10213f">
+          </div>
+        </div>
+      </div>
+
+      <div id="sgType" hidden>
+        <label class="lbl" for="sigTypeText">Your name</label>
+        <input type="text" id="sigTypeText" placeholder="Alex Moreau" maxlength="60">
+        <label class="lbl">Style</label>
+        <select id="sigTypeFont">
+          <option value="'Snell Roundhand','Brush Script MT','Segoe Script',cursive">Flowing script</option>
+          <option value="'Zapfino','Apple Chancery','Lucida Calligraphy',cursive">Formal calligraphy</option>
+          <option value="'Georgia','Times New Roman',serif">Plain serif</option>
+          <option value="'Helvetica Neue',Arial,sans-serif">Plain sans</option>
+        </select>
+        <div class="typepreview" id="sigTypePreview"></div>
+      </div>
+
+      <div id="sgUpload" hidden>
+        <label class="btn block secondary" for="sigFile">Choose image of your signature…</label>
+        <input type="file" id="sigFile" accept="image/png,image/jpeg,image/webp" hidden>
+        <p class="hint">A PNG with a transparent background looks best, but white paper gets keyed out automatically.</p>
+        <div class="wm-preview" id="sigUploadPreview" hidden><img alt="Your signature, with the paper removed"></div>
+      </div>
+
     </div>
     <footer>
-      <span class="muted" id="placeHint">Drag to move, or grab the corner to resize</span>
+      <span class="muted">It stays available until you start over. Nothing is saved anywhere else.</span>
       <div class="field-row">
-        <button class="btn" id="placeCancel">Cancel</button>
-        <button class="btn primary" id="placeConfirm">Place signature</button>
+        <button class="btn" id="signCancel">Cancel</button>
+        <button class="btn primary" id="signConfirm">Place signature</button>
       </div>
     </footer>
   </div>
