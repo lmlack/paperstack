@@ -5,7 +5,7 @@
 import { PDFDocument } from '../../vendor/pdf-lib.esm.min.js';
 import { $, el, segment, bindRange, fmtBytes, download, safeName } from '../lib/dom.js';
 import { openDocument, closeDocument, renderPage, canvasToBlob } from '../pdfjs.js';
-import { state, on, totalBytes, replaceWith } from '../state.js';
+import { state, on, totalBytes, replaceWith, liveSources } from '../state.js';
 import { assemble, addComment } from '../assemble.js';
 import { withBusy, toast } from '../ui/feedback.js';
 
@@ -80,14 +80,16 @@ async function run() {
 
 /** True when the workspace is still exactly one unmodified source file. */
 function pristine() {
-  if (state.sources.size !== 1) return false;
-  const src = [...state.sources.values()][0];
+  // Files whose pages were all deleted stay open for Undo; they do not count.
+  const files = liveSources();
+  if (files.length !== 1) return false;
+  const src = files[0];
   return state.pages.length === src.pageCount
     && state.pages.every((p, i) => p.index === i && p.rot === 0 && p.stamps.length === 0);
 }
 
 function showAlreadyOptimal(before) {
-  const src = [...state.sources.values()][0];
+  const src = liveSources()[0];
   const host = $('#cmpResult');
   host.hidden = false;
   host.textContent = '';
@@ -111,7 +113,8 @@ function showAlreadyOptimal(before) {
  */
 async function rasterize(dpi, quality, grayscale, ui) {
   ui.label('Preparing pages…');
-  const flattened = await assemble(state.pages);
+  const pages = [...state.pages];   // the list as it was when this began
+  const flattened = await assemble(pages);
   const doc = await openDocument(flattened);
   const fakeSource = { pdfjs: doc };
   const out = await PDFDocument.create();
@@ -133,7 +136,7 @@ async function rasterize(dpi, quality, grayscale, ui) {
     sheet.drawImage(jpg, { x: 0, y: 0, width: pointSize.width, height: pointSize.height });
     // Sticky notes are annotations, not ink, so the redraw would drop them.
     // The redrawn page is upright at its displayed size, so no rotation applies.
-    for (const stamp of state.pages[i].stamps) {
+    for (const stamp of pages[i].stamps) {
       if (stamp.type === 'comment') addComment(out, sheet, stamp, { W: pointSize.width, H: pointSize.height, rot: 0 });
     }
 

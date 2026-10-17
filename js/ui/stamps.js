@@ -37,7 +37,7 @@ export function paintStamps(layer, page, pageWidthPt) {
   const widthPt = pageWidthPt || 612;
   for (const stamp of page.stamps) {
     if (stamp.type === 'ink') { layer.append(inkNode(stamp, widthPt)); continue; }
-    const node = el('div', { class: 'st' });
+    const node = el('div', { class: 'st', 'data-id': stamp.id });
     node.style.left = `${stamp.u * 100}%`;
     node.style.top = `${(1 - stamp.v) * 100}%`;
     node.style.opacity = stamp.opacity;
@@ -91,12 +91,18 @@ export function inkNode(stamp, pageWidthPt) {
   svg.setAttribute('class', 'ink');
   svg.setAttribute('viewBox', '0 0 1 1');
   svg.setAttribute('preserveAspectRatio', 'none');
-  const path = document.createElementNS(SVG, 'path');
+  if (stamp.id) svg.dataset.id = stamp.id;
   const pts = stamp.points.length === 1 ? [stamp.points[0], stamp.points[0]] : stamp.points;
-  path.setAttribute('d', pts.map(([u, v], i) => `${i ? 'L' : 'M'}${u} ${1 - v}`).join(''));
+  const d = pts.map(([u, v], i) => `${i ? 'L' : 'M'}${u} ${1 - v}`).join('');
+  // A wide invisible twin of the line, so a thin pen stroke is easy to grab.
+  const hit = document.createElementNS(SVG, 'path');
+  hit.setAttribute('class', 'hit');
+  hit.setAttribute('d', d);
+  const path = document.createElementNS(SVG, 'path');
+  path.setAttribute('d', d);
   path.style.stroke = stamp.color;
   path.style.strokeWidth = `${(stamp.width / (pageWidthPt || 612)) * 100}cqw`;
-  svg.append(path);
+  svg.append(hit, path);
   return svg;
 }
 

@@ -1,12 +1,15 @@
-// Drawing and typing straight onto a page in the full-size viewer.
+// The page editor's tools, and drawing and typing straight onto a page.
 //
-//   Draw  each stroke becomes an "ink" stamp: a list of points in page
-//         fractions, exported as a vector path.
-//   Text  click where the text should start and type; Enter places it as a
-//         bare note, Shift+Enter starts a new line, Esc throws it away.
+//   Select       the default: pick up any mark and move or resize it (arrange.js).
+//   Draw         each stroke becomes an "ink" stamp: a list of points in page
+//                fractions, exported as a vector path.
+//   Text         click where the text should start and type; Enter places it as
+//                a bare note, Shift+Enter starts a new line, Esc throws it away.
+//   Sticky note  click the spot the comment is about and type it; it becomes a
+//                real PDF comment that opens in other apps and does not print.
 //
-// Both are ordinary stamps, so they show on the thumbnails, list under Notes,
-// and come off again with the viewer's Undo.
+// All of them are ordinary stamps, so they show on the thumbnails, list under
+// Notes, and come off again with Undo.
 
 import { $, $$, el, uid } from '../lib/dom.js';
 import { addStamps } from '../state.js';
@@ -21,15 +24,18 @@ const SIZES = {
   type: { label: 'Size', min: 8, max: 48, step: 1, value: 14 },
 };
 const HINTS = {
-  draw: 'Drag on the page to draw. Turn Draw off to scroll with a finger.',
+  select: 'Click a mark to select it, then drag it or pull its corner. Pick a tool to add something new.',
+  draw: 'Drag on the page to draw. Switch to Select to scroll with a finger.',
   type: 'Click where the text should start. Enter places it, Shift+Enter adds a line, Esc cancels.',
+  note: 'Click the spot the note is about, then type. It opens as a comment in other PDF apps and does not print.',
 };
+const STICKY = '#ffd60a';
 
 const viewer = $('#viewer');
 const layer = $('#viewerInk');
 const sizeInput = $('#viewSize');
 
-let mode = null;          // null | 'draw' | 'type'
+let mode = 'select';      // 'select' | 'draw' | 'type' | 'note'
 let color = '#1d1d1f';
 const size = { draw: SIZES.draw.value, type: SIZES.type.value };
 let view = () => null;    // the viewer's current { page, wPt, hPt, scale }
@@ -37,8 +43,10 @@ let editor = null;        // the open text box, if any
 
 export function initMarkup(getView) {
   view = getView;
-  $('#viewDraw').onclick = () => setMode(mode === 'draw' ? null : 'draw');
-  $('#viewType').onclick = () => setMode(mode === 'type' ? null : 'type');
+  // Pressing the tool that is already on goes back to Select.
+  for (const b of $$('.viewer-mode[data-mode]')) {
+    b.onclick = () => setMode(mode === b.dataset.mode ? 'select' : b.dataset.mode);
+  }
 
   $('#viewSwatches').addEventListener('click', (e) => {
     const swatch = e.target.closest('button[data-c]');
@@ -46,6 +54,7 @@ export function initMarkup(getView) {
   });
   $('#viewColor').addEventListener('input', (e) => pickColor(e.target.value));
   sizeInput.addEventListener('input', () => {
+    if (!SIZES[mode]) return;
     size[mode] = Number(sizeInput.value);
     showSize();
     if (editor) editor.restyle();
@@ -53,34 +62,42 @@ export function initMarkup(getView) {
 
   wirePen();
   layer.addEventListener('pointerdown', (e) => {
-    if (mode !== 'type' || e.target !== layer) return;
+    if ((mode !== 'type' && mode !== 'note') || e.target !== layer) return;
     e.preventDefault();   // keep the focus for the box about to open
-    finishText();
-    openText(e);
+    // Tapping away from a box with words in it places them, and that is all:
+    // the tool goes back to Select. An empty box just moves to the new spot.
+    if (editor?.box.value.trim()) { finishText(); return; }
+    finishText(false);
+    openText(e, mode);
   });
+  $('#viewDone').onclick = () => setMode('select');
 }
 
 export const markupMode = () => mode;
 
+let onModeChange = () => {};
+export const whenModeChanges = (fn) => { onModeChange = fn; };
+
 export function setMode(next) {
   finishText();
-  mode = next;
-  viewer.classList.toggle('mode-draw', mode === 'draw');
-  viewer.classList.toggle('mode-type', mode === 'type');
-  $('#viewDraw').setAttribute('aria-pressed', String(mode === 'draw'));
-  $('#viewType').setAttribute('aria-pressed', String(mode === 'type'));
-  $('#viewPen').hidden = !mode;
-  if (!mode) return;
+  mode = next ?? 'select';
+  for (const m of ['select', 'draw', 'type', 'note']) viewer.classList.toggle(`mode-${m}`, mode === m);
+  for (const b of $$('.viewer-mode[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+  // A plain way back to Select, where a swipe turns the page again.
+  $('#viewDone').hidden = mode === 'select';
+  $('#viewPenHint').textContent = HINTS[mode];
+  $('#viewPen').hidden = !SIZES[mode];
+  onModeChange(mode);
+  if (!SIZES[mode]) return;
   const spec = SIZES[mode];
   Object.assign(sizeInput, { min: spec.min, max: spec.max, step: spec.step });
   sizeInput.value = size[mode];
   $('#viewSizeLabel').textContent = spec.label;
-  $('#viewPenHint').textContent = HINTS[mode];
   showSize();
 }
 
 function showSize() {
-  $('#viewSizeOut').textContent = `${size[mode]} pt`;
+  if (SIZES[mode]) $('#viewSizeOut').textContent = `${size[mode]} pt`;
 }
 
 function pickColor(value) {
@@ -98,8 +115,15 @@ function at(e) {
 
 /* ───────────────────────── draw ───────────────────────── */
 
+/** Drops a line still being drawn, e.g. when a second finger turns it into a pinch. */
+export let cancelStroke = () => {};
+
 function wirePen() {
   let stroke = null;   // { points: [[x, y]], path, svg, w, h }
+  cancelStroke = () => {
+    stroke?.svg.remove();
+    stroke = null;
+  };
 
   layer.addEventListener('pointerdown', (e) => {
     if (mode !== 'draw' || !view()) return;
@@ -147,7 +171,7 @@ function wirePen() {
         v: (Math.min(...vs) + Math.max(...vs)) / 2,
         rot: 0,
         opacity: 1,
-      }]);
+      }], 'Draw a line');
     }
     done.svg.remove();   // the stamp layer draws it from here on
   };
@@ -165,12 +189,13 @@ const round = (n) => Math.round(n * 1e5) / 1e5;
 
 /* ───────────────────────── type ───────────────────────── */
 
-async function openText(e) {
+async function openText(e, kind) {
   const current = view();
   if (!current) return;
+  const p = at(e);
+  if (kind === 'note') { openSticky(current, p); return; }
   const { page, wPt, hPt, scale } = current;
   const metrics = await noteMetrics(FONT);
-  const p = at(e);
 
   const box = el('textarea', { spellcheck: 'false', 'aria-label': 'Text to place on the page' });
   const state = { size: size.type, color };
@@ -228,6 +253,7 @@ async function openText(e) {
       addStamps([page], [{
         group: uid('note'),
         type: 'note',
+        source: 'typed',
         text,
         lines,
         font: FONT,
@@ -239,24 +265,74 @@ async function openText(e) {
         w: widthPt / wPt,
         rot: 0,
         opacity: 1,
-      }]);
+      }], 'Add text');
       if (text !== typed) toast('Some characters (like emoji) cannot be written into a PDF this way and became “?”.', 'err', 6500);
+      return true;
     },
   };
 
   box.addEventListener('input', fit);
+  wireEditorKeys(box);
+
+  layer.append(box);
+  editor.restyle();
+  box.focus();
+}
+
+/**
+ * A sticky note: the icon goes where the page was clicked, and a small card
+ * opens beside it for the comment. The text is kept as typed; a PDF comment
+ * holds any character, emoji included.
+ */
+function openSticky({ page }, p) {
+  const u = clamp01(p.x / p.w);
+  const v = clamp01(1 - p.y / p.h);
+  const pin = el('div', { class: 'sticky-pin', style: `left:${p.x}px;top:${p.y}px;background:${STICKY}` });
+  const box = el('textarea', {
+    class: 'sticky-editor',
+    spellcheck: 'true',
+    placeholder: 'Write the note…',
+    'aria-label': 'Sticky note text',
+  });
+  // Open toward whichever side has room.
+  Object.assign(box.style, p.x > p.w * 0.6 ? { right: `${p.w - p.x + 16}px` } : { left: `${p.x + 16}px` });
+  box.style.top = `${Math.min(p.y, p.h - 110)}px`;
+
+  editor = {
+    page,
+    box,
+    nodes: [pin, box],
+    restyle() {},
+    commit() {
+      const text = box.value.replace(/\s+$/, '');
+      if (!text.trim()) return;
+      addStamps([page], [{
+        group: uid('comment'),
+        type: 'comment',
+        text,
+        color: STICKY,
+        created: Date.now(),
+        u,
+        v,
+        rot: 0,
+        opacity: 1,
+      }], 'Add a sticky note');
+      return true;
+    },
+  };
+  wireEditorKeys(box);
+  layer.append(pin, box);
+  box.focus();
+}
+
+function wireEditorKeys(box) {
   box.addEventListener('keydown', (ev) => {
     ev.stopPropagation();   // the viewer's own keys stay out of the way while typing
     if (ev.key === 'Escape') { ev.preventDefault(); finishText(false); }
     else if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finishText(); }
   });
   box.addEventListener('blur', () => { if (editor?.box === box) finishText(); });
-  // Typing on the box should not start another one.
   box.addEventListener('pointerdown', (ev) => ev.stopPropagation());
-
-  layer.append(box);
-  editor.restyle();
-  box.focus();
 }
 
 /** Places (or with keep=false, drops) the text being typed, if there is any. */
@@ -264,6 +340,8 @@ export function finishText(keep = true) {
   if (!editor) return;
   const open = editor;
   editor = null;
-  open.box.remove();
-  if (keep) open.commit();
+  for (const node of open.nodes ?? [open.box]) node.remove();
+  // Text and sticky notes are one at a time: once one is placed, the tool is
+  // put down, so the page can be swiped or the new mark dragged straight away.
+  if (keep && open.commit()) setMode('select');
 }

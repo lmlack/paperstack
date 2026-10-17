@@ -126,7 +126,7 @@ function apply() {
     Object.assign(base, { type: 'image', assetId: asset.id, w: Number($('#wmW').value) / 100 });
   }
 
-  addStamps(pages, placements().map(([u, v]) => ({ ...base, u, v })));
+  addStamps(pages, placements().map(([u, v]) => ({ ...base, u, v })), 'Add a watermark');
   toast(`Watermark added to ${pages.length} page${pages.length === 1 ? '' : 's'}.`, 'ok');
 }
 
@@ -148,8 +148,8 @@ function describe(stamp) {
 function renderStampList() {
   const host = $('#stampList');
   host.textContent = '';
-  // Notes have their own list in the Notes panel.
-  const groups = stampGroups().filter((g) => !NOTE_TYPES.has(g.stamp.type));
+  // Notes have their own list in the Notes panel, signatures in the Sign panel.
+  const groups = stampGroups().filter((g) => !NOTE_TYPES.has(g.stamp.type) && g.stamp.role !== 'signature');
   if (!groups.length) return;
 
   host.append(el('hr'), el('div', { class: 'lbl', text: `Queued marks (${groups.length})` }));

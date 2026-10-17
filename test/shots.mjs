@@ -108,8 +108,50 @@ try {
   await run(`document.documentElement.dataset.theme = 'light'`);
   await shot('5-watermark-light');
 
+  const waitOpen = `for (let i = 0; i < 100 && (document.querySelector('#viewer').hidden
+      || document.querySelector('#viewer').classList.contains('busy')); i++) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    await new Promise(r => setTimeout(r, 250));`;
+  const closeEditor = `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise(r => setTimeout(r, 300));`;
+
+  // a selection, with its actions in the grid header
   await run(`(async () => {
+    const { setSelection, state } = await import('/js/state.js');
+    setSelection([state.pages[1].uid, state.pages[2].uid]);
+    await new Promise(r => setTimeout(r, 100));
+  })()`);
+  await shot('5b-selection-light');
+
+  // a second file dropped in at page 3, its pages marked, and the insert menu
+  await run(`(async () => {
+    const { setSelection, state } = await import('/js/state.js');
+    setSelection([]);
+    const bytes = await fetch('/test/fixture.pdf').then((r) => r.arrayBuffer());
+    const { intake } = await import('/js/ui/intake.js');
+    await intake([new File([bytes], 'appendix.pdf', { type: 'application/pdf' })], 2);
+    await new Promise(r => setTimeout(r, 600));
+    document.querySelectorAll('#pagegrid .tile')[1].querySelector('.slot').click();
+    await new Promise(r => setTimeout(r, 150));
+  })()`);
+  await shot('5c-merged-insert-menu');
+
+  await run(`(async () => {
+    const { closeMenu } = await import('/js/ui/menu.js');
+    closeMenu();
+    const { deletePages, state } = await import('/js/state.js');
+    deletePages(state.pages.slice(2, 6));
+    await new Promise(r => setTimeout(r, 300));
+  })()`);
+
+  await run(`(async () => {
+    const { setSelection } = await import('/js/state.js');
+    setSelection([]);
     document.querySelector('.dock-tab[data-panel="sign"]').click();
+    document.querySelector('#btnSigNew').click();
+    await new Promise(r => setTimeout(r, 100));
     const pad = document.querySelector('#sigPad');
     const b = pad.getBoundingClientRect();
     const ev = (t, fx, fy) => pad.dispatchEvent(new PointerEvent(t, {
@@ -122,48 +164,42 @@ try {
     ev('pointerup', 0.72, 0.5);
     await new Promise(r => setTimeout(r, 200));
   })()`);
-  await shot('6-signature-pad');
+  await shot('6-signature-dialog');
 
   await run(`(async () => {
-    document.querySelector('#btnSigPlace').click();
-    for (let i = 0; i < 100 && document.querySelector('#placeModal').hidden; i++) {
-      await new Promise(r => setTimeout(r, 50));
-    }
+    document.querySelector('#signConfirm').click();
+    ${waitOpen}
   })()`);
-  await shot('7-place-signature');
+  await shot('7-signature-on-page');
 
-  const openPlace = `for (let i = 0; i < 100 && document.querySelector('#placeModal').hidden; i++) {
-      await new Promise(r => setTimeout(r, 50));
-    }`;
   await run(`(async () => {
-    document.querySelector('#placeCancel').click();
+    ${closeEditor}
     document.querySelector('.dock-tab[data-panel="notes"]').click();
     document.querySelector('#ntText').value = 'Check this figure against the Q3 numbers before Friday';
     document.querySelector('#btnNtPlace').click();
-    ${openPlace}
+    ${waitOpen}
   })()`);
-  await shot('7b-place-note');
+  await shot('7b-note-on-page');
 
   await run(`(async () => {
-    document.querySelector('#placeConfirm').click();
+    ${closeEditor}
     document.querySelector('#ntKind [data-v="comment"]').click();
     document.querySelector('#ntText').value = 'Is this the final number?';
     document.querySelector('#btnNtPlace').click();
-    ${openPlace}
-    document.querySelector('#placeConfirm').click();
-    await new Promise(r => setTimeout(r, 300));
+    ${waitOpen}
+    ${closeEditor}
   })()`);
   await shot('7c-notes-panel');
 
   await run(`(async () => {
-    document.querySelector('#placeCancel').click();
+    document.querySelector('.dock-tab[data-panel="sign"]').click();
+    await new Promise(r => setTimeout(r, 100));
+  })()`);
+  await shot('7d-sign-panel');
+
+  await run(`(async () => {
     document.querySelector('#pagegrid .tile .expand span').click();
-    for (let i = 0; i < 100 && document.querySelector('#viewer').hidden; i++) {
-      await new Promise(r => setTimeout(r, 50));
-    }
-    for (let i = 0; i < 100 && document.querySelector('#viewer').classList.contains('busy'); i++) {
-      await new Promise(r => setTimeout(r, 50));
-    }
+    ${waitOpen}
   })()`);
   await shot('8-viewer-light');
 
@@ -187,11 +223,23 @@ try {
   })()`);
   await shot('8b-viewer-draw');
 
+  // a mark picked up in Select, with its grip and Delete
+  await run(`(async () => {
+    document.querySelector('#viewSelect').click();
+    const node = document.querySelector('#viewerStamps .st.note');
+    const b = node.getBoundingClientRect();
+    node.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 5, bubbles: true, cancelable: true,
+      clientX: b.left + 5, clientY: b.top + 5 }));
+    node.dispatchEvent(new PointerEvent('pointerup', { pointerId: 5, bubbles: true }));
+    await new Promise(r => setTimeout(r, 150));
+  })()`);
+  await shot('8c-viewer-select');
+
   await run(`document.documentElement.dataset.theme = 'dark'`);
   await shot('9-viewer-dark');
 
   // narrow viewport, to prove the layout holds up
-  await run(`document.querySelector('#viewClose').click()`);
+  await run(`(async () => { document.querySelector('#viewClose').click(); await new Promise(r => setTimeout(r, 300)); })()`);
   await send('Emulation.setDeviceMetricsOverride',
     { width: 430, height: 940, deviceScaleFactor: 2, mobile: true });
   await run(`document.querySelector('.dock-tab[data-panel="pages"]').click(); window.scrollTo(0,0)`);
@@ -202,6 +250,7 @@ try {
     for (let i = 0; i < 100 && document.querySelector('#viewer').classList.contains('busy'); i++) {
       await new Promise(r => setTimeout(r, 50));
     }
+    document.querySelector('#viewDraw').click();
     await new Promise(r => setTimeout(r, 300));
   })()`);
   await shot('11-phone-viewer-draw');

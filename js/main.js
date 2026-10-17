@@ -1,64 +1,32 @@
 // App bootstrap: file intake, the tool dock, export, theme and shortcuts.
 
 import { $, $$, fmtBytes, download, safeName } from './lib/dom.js';
-import { state, on, addPdf, addImageAsPage, reset, setSelection, totalBytes, targetPages, rotatePages, deletePages } from './state.js';
+import { state, on, reset, setSelection, totalBytes, targetPages, rotatePages, liveSources } from './state.js';
 import { assemble } from './assemble.js';
-import { renderGrid } from './ui/pagegrid.js';
+import { renderGrid, deleteWithUndo } from './ui/pagegrid.js';
 import { initViewer } from './ui/viewer.js';
+import { initHistory, historyKey } from './ui/history.js';
+import { intake, initIntake } from './ui/intake.js';
+import { openMenu } from './ui/menu.js';
+import { exportImages, imageScope } from './tools/images.js';
 import { toast, withBusy } from './ui/feedback.js';
 import { initOrganize } from './tools/organize.js';
 import { initCompress } from './tools/compress.js';
 import { initWatermark } from './tools/watermark.js';
 import { initSign } from './tools/sign.js';
 import { initNotes } from './tools/notes.js';
-import { initPlacement } from './ui/place.js';
 import { initExtract } from './tools/extract.js';
 import { initSplit } from './tools/split.js';
 
-/* ───────────────────────── file intake ───────────────────────── */
+/* ───────────────────────── iOS focus zoom ───────────────────────── */
 
-async function intake(files) {
-  const list = [...files];
-  const pdfs = list.filter((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
-  const images = list.filter((f) => f.type.startsWith('image/'));
-  const ignored = list.length - pdfs.length - images.length;
-
-  if (!pdfs.length && !images.length) {
-    toast('Drop a PDF (or an image to add as a page).', 'err');
-    return;
-  }
-
-  await withBusy('Opening…', async (ui) => {
-    const total = pdfs.length + images.length;
-    let done = 0;
-    const failures = [];
-
-    for (const file of pdfs) {
-      ui.label(`Opening ${file.name}…`);
-      ui.step(done, total);
-      try { await addPdf(file); } catch (err) { failures.push(err.message); }
-      done++;
-    }
-    for (const file of images) {
-      ui.label(`Converting ${file.name}…`);
-      ui.step(done, total);
-      try { await addImageAsPage(file); } catch { failures.push(`${file.name} could not be read.`); }
-      done++;
-    }
-    for (const message of failures) toast(message, 'err', 7000);
-  });
-
-  if (ignored) toast(`Skipped ${ignored} file${ignored === 1 ? '' : 's'} that wasn’t a PDF or image.`);
+// iOS zooms the whole page in when a text box with type under 16px gets the
+// focus, and leaves it zoomed. maximum-scale=1 stops that, and iOS still lets
+// people pinch to zoom whatever it says. Other browsers would honor it as a
+// pinch lock, so it is set for iOS alone.
+if (/iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+  $('meta[name="viewport"]').content = 'width=device-width, initial-scale=1, maximum-scale=1';
 }
-
-$('#fileInput').addEventListener('change', (e) => {
-  intake(e.target.files);
-  e.target.value = '';
-});
-$('#imageInput').addEventListener('change', (e) => {
-  intake(e.target.files);
-  e.target.value = '';
-});
 
 /* ───────────────────────── drag and drop ───────────────────────── */
 
@@ -78,10 +46,11 @@ window.addEventListener('dragleave', () => {
   if (!dragDepth) dropzone.classList.remove('hot');
 });
 window.addEventListener('drop', (e) => {
-  if (!e.dataTransfer?.files?.length) return;
-  e.preventDefault();
   dragDepth = 0;
   dropzone.classList.remove('hot');
+  // A drop onto the page grid has already gone in where it was aimed.
+  if (e.defaultPrevented || !e.dataTransfer?.files?.length) return;
+  e.preventDefault();
   intake(e.dataTransfer.files);
 });
 
@@ -93,7 +62,7 @@ function syncChrome() {
   $('#workspace').hidden = !has;
   $('#dock').hidden = !has;
   $('#stats').hidden = !has;
-  $('#btnExport').hidden = !has;
+  $('#exportGroup').hidden = !has;
   $('#btnShare').hidden = !has || !canShareFiles;
   $('#btnReset').hidden = !has;
   $('#addFilesBtn').hidden = !has;
@@ -101,13 +70,17 @@ function syncChrome() {
   if (!has) return;
   const n = state.pages.length;
   $('#statPages').textContent = `${n} page${n === 1 ? '' : 's'}`;
-  $('#statFiles').textContent = `${state.sources.size} file${state.sources.size === 1 ? '' : 's'}`;
+  const files = liveSources().length;
+  $('#statFiles').textContent = `${files} file${files === 1 ? '' : 's'}`;
   $('#statSize').textContent = fmtBytes(totalBytes());
 }
 
 $$('.dock-tab').forEach((tab) => {
   tab.onclick = () => {
-    $$('.dock-tab').forEach((t) => t.classList.toggle('active', t === tab));
+    $$('.dock-tab').forEach((t) => {
+      t.classList.toggle('active', t === tab);
+      t.setAttribute('aria-selected', String(t === tab));
+    });
     $$('.panel').forEach((p) => p.classList.toggle('active', p.id === `panel-${tab.dataset.panel}`));
   };
 });
@@ -134,6 +107,16 @@ async function exportPdf() {
 }
 
 $('#btnExport').onclick = exportPdf;
+
+// The arrow beside Export: the same document as pictures, for a slide, a chat
+// or an email body.
+const PICTURE = '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-5 4 4 2.5-2.5L20 17"/></svg>';
+const DOC = '<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>';
+$('#btnExportMore').onclick = () => openMenu($('#btnExportMore'), [
+  { label: 'PDF', hint: 'The whole document (⌘S)', icon: DOC, run: exportPdf },
+  { label: 'JPG images', hint: imageScope(), icon: PICTURE, run: () => exportImages('jpg') },
+  { label: 'PNG images', hint: `${imageScope()}, lossless`, icon: PICTURE, run: () => exportImages('png') },
+], { label: 'Export as' });
 
 /* ───────────────────────── share ───────────────────────── */
 
@@ -196,8 +179,10 @@ $('#themeToggle').onclick = () => {
 
 document.addEventListener('keydown', (e) => {
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
-  // The viewer handles its own keys while it is open.
-  if (typing || !state.pages.length || !$('#viewer').hidden) return;
+  // The viewer and the signature dialog handle their own keys while open.
+  if (typing || !$('#viewer').hidden || !$('#signDialog').hidden) return;
+  if (historyKey(e)) return;
+  if (!state.pages.length) return;
   const meta = e.metaKey || e.ctrlKey;
 
   if (meta && e.key.toLowerCase() === 'a') {
@@ -214,9 +199,7 @@ document.addEventListener('keydown', (e) => {
     rotatePages(targetPages(), 90);
   } else if ((e.key === 'Backspace' || e.key === 'Delete') && state.sel.size) {
     e.preventDefault();
-    const doomed = targetPages();
-    if (doomed.length < state.pages.length) deletePages(doomed);
-    else toast('That would delete every page.', 'err');
+    deleteWithUndo(targetPages());
   }
 });
 
@@ -226,10 +209,11 @@ on('pages', syncChrome);
 on('sources', syncChrome);
 
 initViewer();
+initHistory();
+initIntake();
 initOrganize();
 initCompress();
 initWatermark();
-initPlacement();
 initSign();
 initNotes();
 initExtract();

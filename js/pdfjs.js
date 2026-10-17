@@ -49,8 +49,18 @@ function pump() {
   }
 }
 
-function enqueue(run) {
+/**
+ * Queues a render. An `urgent` one, the page someone is looking at in the
+ * editor, starts straight away instead of waiting its turn behind a grid's
+ * worth of thumbnails.
+ */
+function enqueue(run, urgent = false) {
   return new Promise((resolve, reject) => {
+    if (urgent) {
+      active++;
+      run().then(resolve, reject).finally(() => { active--; pump(); });
+      return;
+    }
     waiting.push({ run, resolve, reject });
     pump();
   });
@@ -59,6 +69,7 @@ function enqueue(run) {
 /* ───────────────────────── thumbnails ───────────────────────── */
 
 const thumbs = new Map();   // `${srcId}:${pageIndex}:${width}` -> Promise<{canvas, wPt, hPt}>
+const ready = new Map();    // the same keys, once rendered
 
 /**
  * Renders a page at its natural orientation (PDF.js folds the page's own /Rotate
@@ -84,7 +95,9 @@ export function thumbnail(src, pageIndex, width = 320) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({ canvasContext: ctx, viewport }).promise;
       page.cleanup();
-      return { canvas, wPt: base.width, hPt: base.height };
+      const result = { canvas, wPt: base.width, hPt: base.height };
+      ready.set(key, result);
+      return result;
     }).catch((err) => { thumbs.delete(key); throw err; }));
   }
   return thumbs.get(key);
@@ -92,6 +105,16 @@ export function thumbnail(src, pageIndex, width = 320) {
 
 export function forgetThumbnails(srcId) {
   for (const key of thumbs.keys()) if (key.startsWith(`${srcId}:`)) thumbs.delete(key);
+  for (const key of ready.keys()) if (key.startsWith(`${srcId}:`)) ready.delete(key);
+}
+
+/** The sharpest thumbnail already rendered for a page, or null. Never renders. */
+export function peekThumbnail(src, pageIndex) {
+  let best = null;
+  for (const [key, result] of ready) {
+    if (key.startsWith(`${src.id}:${pageIndex}:`) && (!best || result.canvas.width > best.canvas.width)) best = result;
+  }
+  return best;
 }
 
 /**
@@ -114,8 +137,8 @@ export function rotateCanvas(source, deg) {
   return out;
 }
 
-/** Full-size render used by the compressor and the signature placement stage. */
-export function renderPage(src, pageIndex, scale, { grayscale = false, rotation } = {}) {
+/** Full-size render, used by the page editor and the compressor. */
+export function renderPage(src, pageIndex, scale, { grayscale = false, rotation, urgent = false } = {}) {
   return enqueue(async () => {
     const page = await src.pdfjs.getPage(pageIndex + 1);
     const viewport = page.getViewport(rotation == null ? { scale } : { scale, rotation });
@@ -129,7 +152,7 @@ export function renderPage(src, pageIndex, scale, { grayscale = false, rotation 
     page.cleanup();
     if (grayscale) toGrayscale(ctx, canvas);
     return canvas;
-  });
+  }, urgent);
 }
 
 function toGrayscale(ctx, canvas) {
