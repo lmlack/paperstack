@@ -4,11 +4,14 @@
 // vendor/pdfjs holds PDF.js's *legacy* build. The modern one leans on brand-new
 // built-ins (Map#getOrInsertComputed, Math.sumPrecise, ...) and fails to render
 // anything in browsers even a few months old.
-import * as pdfjs from '../vendor/pdfjs/pdf.min.mjs';
+//
+// vendor/ is cached for a month, so the ?v= has to change whenever these two
+// files do, or returning visitors keep the old copies.
+import * as pdfjs from '../vendor/pdfjs/pdf.min.mjs?v=6.2.108-legacy';
 
 const here = (path) => new URL(path, import.meta.url).href;
 
-pdfjs.GlobalWorkerOptions.workerSrc = here('../vendor/pdfjs/pdf.worker.min.mjs');
+pdfjs.GlobalWorkerOptions.workerSrc = here('../vendor/pdfjs/pdf.worker.min.mjs?v=6.2.108-legacy');
 
 const DOC_OPTS = {
   cMapUrl: here('../vendor/pdfjs/cmaps/'),

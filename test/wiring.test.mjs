@@ -100,7 +100,8 @@ test('every module the app imports exists on disk', () => {
   const missing = [];
   for (const { path, text } of sources) {
     for (const m of text.matchAll(/from\s+'(\.[^']+)'/g)) {
-      const resolved = join(root, path, '..', m[1]);
+      // A ?v= cache-buster is for the browser, not the filesystem.
+      const resolved = join(root, path, '..', m[1].split('?')[0]);
       try { statSync(resolved); } catch { missing.push(`${path} → ${m[1]}`); }
     }
   }
