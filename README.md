@@ -148,7 +148,7 @@ js/
   ui/stamps.js        draws queued marks over a page (grid and viewer share it)
   ui/feedback.js      toasts and the progress overlay
   tools/*.js          one module per panel
-vendor/               pdf-lib 1.17.1 (MIT), PDF.js 6.2.108 (Apache-2.0),
+vendor/               pdf-lib 1.17.1 (MIT), PDF.js 6.2.108 legacy build (Apache-2.0),
                       Atkinson Hyperlegible and Righteous (SIL Open Font License)
 ```
 

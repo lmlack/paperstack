@@ -1,6 +1,9 @@
 // PDF.js wrapper: document loading, a thumbnail cache, and a small render queue
 // so that dropping a 400-page file does not start 400 rasterizations at once.
 
+// vendor/pdfjs holds PDF.js's *legacy* build. The modern one leans on brand-new
+// built-ins (Map#getOrInsertComputed, Math.sumPrecise, ...) and fails to render
+// anything in browsers even a few months old.
 import * as pdfjs from '../vendor/pdfjs/pdf.min.mjs';
 
 const here = (path) => new URL(path, import.meta.url).href;
